@@ -1,7 +1,5 @@
 # 🗓️ Meeting Room Booking App
 
-DB PASS : SLDevStation@202
-
 A lightweight meeting-room booking app built with **plain HTML, CSS and JavaScript**, using an
 an **Excel (`.xlsx`) file as the database** (via [SheetJS](https://sheetjs.com)). Designed to deploy
 for free on **GitLab Pages**.
