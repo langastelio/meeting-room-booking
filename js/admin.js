@@ -105,4 +105,22 @@ a.resetBtn.addEventListener("click", async () => {
 (async function init() {
   await DB.init();
   renderRooms();
+
+  // Keep the room list in sync with other people (poll + realtime).
+  if (DB.isShared()) {
+    let syncing = false;
+    const sync = async () => {
+      if (syncing) return;
+      syncing = true;
+      try {
+        await DB.refresh();
+        renderRooms();
+      } finally {
+        syncing = false;
+      }
+    };
+    window.addEventListener("focus", sync);
+    setInterval(sync, 5000);
+    DB.onChange(sync);
+  }
 })();

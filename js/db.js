@@ -231,6 +231,24 @@ const DB = (() => {
     return state;
   }
 
+  // Subscribe to live changes (Supabase Realtime). Calls cb() whenever rooms or
+  // bookings change in the database. No-op for non-Supabase backends (polling
+  // in the page covers those). Returns an unsubscribe function.
+  function onChange(cb) {
+    if (mode !== "supabase" || !sb) return () => {};
+    try {
+      const ch = sb
+        .channel("mrb-realtime")
+        .on("postgres_changes", { event: "*", schema: "public", table: "rooms" }, cb)
+        .on("postgres_changes", { event: "*", schema: "public", table: "bookings" }, cb)
+        .subscribe();
+      return () => sb.removeChannel(ch);
+    } catch (e) {
+      console.warn("Realtime subscribe failed (polling still works):", e.message || e);
+      return () => {};
+    }
+  }
+
   // ---- getters (sync, read the cache) --------------------------------------
   const getRooms = () => state.rooms.slice();
   const getActiveRooms = () => state.rooms.filter((r) => r.active);
@@ -408,6 +426,7 @@ const DB = (() => {
   return {
     init,
     refresh,
+    onChange,
     isShared,
     backend,
     getRooms,

@@ -53,6 +53,14 @@ create policy "bookings write"  on public.bookings for insert with check (true);
 create policy "bookings update" on public.bookings for update using (true) with check (true);
 create policy "bookings delete" on public.bookings for delete using (true);
 
+-- ---- Realtime (optional but recommended) -----------------------------------
+-- Lets the app receive instant push updates so other browsers refresh on their
+-- own. The app also polls every 5s, so this is a bonus, not required.
+do $$ begin
+  alter publication supabase_realtime add table public.rooms, public.bookings;
+exception when others then null;  -- already added / not available: ignore
+end $$;
+
 -- The app auto-seeds "Boardroom A" from data/database.xlsx on first run, so you
 -- don't need to insert any rows here. (Optional manual seed below.)
 -- insert into public.rooms (name, location, capacity, facilities, active)

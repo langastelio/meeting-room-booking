@@ -132,8 +132,12 @@ els.form.addEventListener("submit", async (e) => {
 
 els.room.addEventListener("change", highlightSelected);
 
-function renderAll() {
+// Re-render everything. When preserveSelection is true, keep the room the user
+// has chosen in the form (so background refreshes don't reset it mid-booking).
+function renderAll(preserveSelection) {
+  const selected = els.room.value;
   renderRoomOptions();
+  if (preserveSelection && selected) els.room.value = selected;
   renderRooms();
   renderBookings();
 }
@@ -144,11 +148,22 @@ function renderAll() {
   els.date.value = new Date().toISOString().slice(0, 10);
   renderAll();
 
-  // Keep in sync with other people: re-pull shared data when the tab regains focus.
+  // Keep every browser in sync, three ways:
   if (DB.isShared()) {
-    window.addEventListener("focus", async () => {
-      await DB.refresh();
-      renderAll();
-    });
+    let syncing = false;
+    const sync = async () => {
+      if (syncing) return;            // avoid overlapping refreshes
+      syncing = true;
+      try {
+        await DB.refresh();
+        renderAll(true);
+      } finally {
+        syncing = false;
+      }
+    };
+
+    window.addEventListener("focus", sync);   // 1. when the tab regains focus
+    setInterval(sync, 5000);                   // 2. poll every 5s (always works)
+    DB.onChange(sync);                         // 3. instant push (if Realtime on)
   }
 })();
