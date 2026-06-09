@@ -164,3 +164,23 @@ tr:last-child td { border-bottom: none; }
 .muted-note { color: var(--muted); font-size: 0.8rem; margin-top: 8px; }
 .icon-btn { background: transparent; color: var(--muted); padding: 4px 8px; }
 .icon-btn:hover { background: var(--surface-2); color: var(--danger); }
+
+/* ---- Auth / login ---- */
+.auth-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.auth-card {
+  width: 100%; max-width: 380px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 28px;
+}
+.auth-brand { font-size: 1.1rem; margin: 0 0 18px; }
+.auth-brand .logo { color: var(--primary); }
+.auth-card h2 { margin: 0 0 4px; }
+
+/* ---- User badge + logout in header ---- */
+.user-badge {
+  font-size: 0.8rem; color: var(--muted);
+  background: var(--surface-2); border: 1px solid var(--border);
+  border-radius: 999px; padding: 4px 12px; text-transform: capitalize;
+}
+nav button.logout { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+nav button.logout:hover { background: var(--danger); color: #fff; border-color: transparent; }

@@ -8,20 +8,33 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <!-- Apply saved theme before paint to avoid a flash -->
   <script src="js/theme.js"></script>
+  <!-- Require ADMIN before showing this page -->
+  <script>
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem("mrb_session"));
+        if (!s) location.replace("login.html");
+        else if (s.role !== "admin") location.replace("index.html");
+      } catch (e) { location.replace("login.html"); }
+    })();
+  </script>
 </head>
 <body>
   <header>
     <h1><span class="logo">▦</span> Meeting Room Booking</h1>
     <nav>
       <a href="index.html">Book a Room</a>
-      <a href="admin.html" class="active">Admin</a>
+      <a href="admin.html" id="navAdmin" class="active">Admin</a>
+      <a href="users.html" id="navUsers">Users</a>
+      <span class="user-badge" id="userBadge"></span>
       <button class="theme-toggle" type="button">☀️</button>
+      <button class="logout" id="logoutBtn" type="button">Logout</button>
     </nav>
   </header>
 
   <main>
     <h2 class="page-title">Admin — Manage Rooms</h2>
-    <p class="page-sub">Add meeting rooms, then export the data to a real Excel workbook to make it permanent.</p>
+    <p class="page-sub">Add and remove meeting rooms. Changes save straight to the database.</p>
 
     <div class="grid two">
       <!-- Add room form -->
@@ -45,42 +58,25 @@
         </form>
       </section>
 
-      <!-- Data tools + room list -->
-      <div class="grid">
-        <section class="card">
-          <h2>Excel Database</h2>
-          <div class="btn-bar">
-            <button id="exportBtn">⬇ Export to Excel (.xlsx)</button>
-            <label class="ghost" style="display:inline-flex;align-items:center;padding:10px 16px;border-radius:8px;cursor:pointer;border:1px solid var(--border);">
-              ⬆ Import Excel/CSV
-              <input id="importInput" type="file" accept=".xlsx,.xls,.csv" hidden />
-            </label>
-            <button id="resetBtn" class="ghost">↺ Reset to seed file</button>
-          </div>
-          <p class="muted-note">
-            The database is <code>data/database.xlsx</code>. To make changes permanent, click
-            <strong>Export to Excel</strong> and replace <code>data/database.xlsx</code> with the
-            downloaded file, then push to GitHub. (Or set up JSONBin for instant shared saving.)
-          </p>
-        </section>
-
-        <section class="card">
-          <h2>Current Rooms</h2>
-          <table>
-            <thead>
-              <tr><th>Name</th><th>Location</th><th>Seats</th><th>Facilities</th><th>Status</th><th></th></tr>
-            </thead>
-            <tbody id="adminRoomList"></tbody>
-          </table>
-        </section>
-      </div>
+      <!-- Room list -->
+      <section class="card">
+        <h2>Current Rooms</h2>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Location</th><th>Seats</th><th>Facilities</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody id="adminRoomList"></tbody>
+        </table>
+      </section>
     </div>
   </main>
 
   <!-- Supabase client (shared database) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/db.js"></script>
   <script src="js/admin.js"></script>
+  <script src="js/nav.js"></script>
 </body>
 </html>

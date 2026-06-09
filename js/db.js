@@ -365,64 +365,6 @@ const DB = (() => {
     await docSave(data);
   }
 
-  // ---- Excel import / export ----------------------------------------------
-  function exportWorkbook() {
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(getRooms()), "Rooms");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(getBookings()), "Bookings");
-    XLSX.writeFile(wb, "database.xlsx");
-  }
-
-  async function importWorkbook(file) {
-    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
-    const findSheet = (name) => wb.SheetNames.find((n) => n.toLowerCase() === name);
-    const roomsSheet = findSheet("rooms") || wb.SheetNames[0];
-    const bookingsSheet = findSheet("bookings");
-    const rooms = roomsSheet
-      ? XLSX.utils.sheet_to_json(wb.Sheets[roomsSheet], { defval: "" }).map(normaliseRoom).filter((r) => r.name)
-      : [];
-    const bookings = bookingsSheet
-      ? XLSX.utils.sheet_to_json(wb.Sheets[bookingsSheet], { defval: "" })
-      : [];
-
-    if (mode === "supabase") {
-      // Replace everything. Bookings get room_id nulled to avoid FK mismatches
-      // against freshly-assigned room ids (room_name is preserved).
-      await sbClearAll();
-      await sbInsertRooms(rooms);
-      if (bookings.length) {
-        const payload = bookings.map((b) =>
-          toDbBooking({
-            roomId: null,
-            roomName: b.roomName || "",
-            title: b.title || "(imported)",
-            bookedBy: b.bookedBy || "",
-            date: b.date,
-            startTime: b.startTime,
-            endTime: b.endTime,
-          })
-        );
-        const { error } = await sb.from("bookings").insert(payload);
-        if (error) throw error;
-      }
-      await refresh();
-      return;
-    }
-
-    await docSave({ rooms, bookings });
-  }
-
-  async function resetToSeed() {
-    const seed = await seedFromExcel();
-    if (mode === "supabase") {
-      await sbClearAll();
-      await sbInsertRooms(seed.rooms);
-      await refresh();
-      return;
-    }
-    await docSave(seed);
-  }
-
   return {
     init,
     refresh,
@@ -437,8 +379,5 @@ const DB = (() => {
     deleteRoom,
     addBooking,
     deleteBooking,
-    exportWorkbook,
-    importWorkbook,
-    resetToSeed,
   };
 })();

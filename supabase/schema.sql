@@ -53,6 +53,22 @@ create policy "bookings write"  on public.bookings for insert with check (true);
 create policy "bookings update" on public.bookings for update using (true) with check (true);
 create policy "bookings delete" on public.bookings for delete using (true);
 
+-- ---- App users (simple login gate) -----------------------------------------
+-- Stores accounts for the app's own login screen. Passwords are stored hashed
+-- (SHA-256 on the client). The FIRST account created becomes the admin.
+create table if not exists public.app_users (
+  id            bigint generated always as identity primary key,
+  username      text unique not null,
+  password_hash text not null,
+  role          text not null default 'user' check (role in ('admin','user')),
+  active        boolean not null default true,
+  created_at    timestamptz default now()
+);
+
+alter table public.app_users enable row level security;
+drop policy if exists "app_users all" on public.app_users;
+create policy "app_users all" on public.app_users for all using (true) with check (true);
+
 -- ---- Realtime (optional but recommended) -----------------------------------
 -- Lets the app receive instant push updates so other browsers refresh on their
 -- own. The app also polls every 5s, so this is a bonus, not required.

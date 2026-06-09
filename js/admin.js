@@ -1,4 +1,4 @@
-/* admin.js — room management + Excel import/export */
+/* admin.js — room management (saves straight to the database) */
 
 const a = {
   form: document.getElementById("roomForm"),
@@ -8,9 +8,6 @@ const a = {
   facilities: document.getElementById("facilities"),
   alert: document.getElementById("roomAlert"),
   list: document.getElementById("adminRoomList"),
-  exportBtn: document.getElementById("exportBtn"),
-  importInput: document.getElementById("importInput"),
-  resetBtn: document.getElementById("resetBtn"),
 };
 
 function showAlert(msg, ok) {
@@ -72,33 +69,6 @@ a.form.addEventListener("submit", async (e) => {
   } finally {
     btn.disabled = false;
     btn.textContent = "Add Room";
-  }
-});
-
-a.exportBtn.addEventListener("click", () => DB.exportWorkbook());
-
-a.importInput.addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  try {
-    await DB.importWorkbook(file);
-    showAlert(`Imported "${file.name}".`, true);
-    renderRooms();
-  } catch (err) {
-    showAlert("Import failed: " + err.message, false);
-  }
-  a.importInput.value = "";
-});
-
-a.resetBtn.addEventListener("click", async () => {
-  if (confirm("Discard changes and reload from the seed file in /data?")) {
-    try {
-      await DB.resetToSeed();
-      renderRooms();
-      showAlert("Reset to the seed spreadsheet.", true);
-    } catch (err) {
-      showAlert("Reset failed: " + err.message, false);
-    }
   }
 });
 

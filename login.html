@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in — Meeting Room Booking</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/theme.js"></script>
+  <!-- Already signed in? Skip straight to the app. -->
+  <script>if (localStorage.getItem("mrb_session")) location.replace("index.html");</script>
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <h1 class="auth-brand"><span class="logo">▦</span> Meeting Room Booking</h1>
+      <h2 id="authTitle">Sign in</h2>
+      <p class="page-sub" id="authSub">Enter your credentials to continue.</p>
+
+      <form id="authForm">
+        <label for="username">Username</label>
+        <input id="username" type="text" autocomplete="username" required />
+
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required />
+
+        <button type="submit" class="block" id="authBtn">Sign in</button>
+        <div id="authAlert" class="alert"></div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>
