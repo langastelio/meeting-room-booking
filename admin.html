@@ -14,6 +14,7 @@
       try {
         var s = JSON.parse(localStorage.getItem("mrb_session"));
         if (!s) location.replace("login.html");
+        else if (s.mustReset) location.replace("reset-password.html");
         else if (s.role !== "admin") location.replace("index.html");
       } catch (e) { location.replace("login.html"); }
     })();

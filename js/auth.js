@@ -61,11 +61,14 @@ const Auth = (() => {
   async function listUsers() {
     const { data, error } = await sb
       .from("app_users")
-      .select("id, username, role, active, created_at")
+      .select("id, username, name, role, active, must_reset, created_at")
       .order("id", { ascending: true });
     if (error) throw error;
     return data || [];
   }
+
+  // Display name helper: prefer the person's name, fall back to username.
+  const displayName = (u) => (u && (u.name || u.username)) || "";
 
   // ---- auth actions --------------------------------------------------------
   async function login(username, password) {
@@ -74,18 +77,25 @@ const Auth = (() => {
     const ph = await hash(username, password);
     const { data, error } = await sb
       .from("app_users")
-      .select("id, username, role, active")
+      .select("id, username, name, role, active, must_reset")
       .eq("username", username)
       .eq("password_hash", ph)
       .limit(1);
     if (error) return { ok: false, error: error.message };
     if (!data.length) return { ok: false, error: "Invalid username or password." };
-    if (!data[0].active) return { ok: false, error: "This account is disabled." };
-    setSession({ id: data[0].id, username: data[0].username, role: data[0].role });
-    return { ok: true, user: data[0] };
+    const u = data[0];
+    if (!u.active) return { ok: false, error: "This account is disabled." };
+    setSession({
+      id: u.id,
+      username: u.username,
+      name: u.name || u.username,
+      role: u.role,
+      mustReset: !!u.must_reset,
+    });
+    return { ok: true, user: u };
   }
 
-  async function createUser({ username, password, role }) {
+  async function createUser({ username, password, name, role, mustReset = true }) {
     if (!sb) return { ok: false, error: "Database not configured." };
     username = (username || "").trim().toLowerCase();
     if (!username || !password) return { ok: false, error: "Username and password are required." };
@@ -94,11 +104,13 @@ const Auth = (() => {
       .from("app_users")
       .insert({
         username,
+        name: (name || "").trim() || null,
         password_hash: ph,
         role: role === "admin" ? "admin" : "user",
         active: true,
+        must_reset: !!mustReset,
       })
-      .select("id, username, role, active")
+      .select("id, username, name, role, active, must_reset")
       .single();
     if (error) {
       if (error.code === "23505") return { ok: false, error: "That username already exists." };
@@ -107,25 +119,65 @@ const Auth = (() => {
     return { ok: true, user: data };
   }
 
-  // Used by the login page when no accounts exist yet.
-  async function createFirstAdmin({ username, password }) {
+  // Used by the login page when no accounts exist yet. The first admin chooses
+  // their own password, so no forced reset.
+  async function createFirstAdmin({ username, password, name }) {
     if (!sb) return { ok: false, error: "Database not configured." };
     if ((await userCount()) > 0)
       return { ok: false, error: "An account already exists. Please sign in." };
-    const res = await createUser({ username, password, role: "admin" });
-    if (res.ok) setSession({ id: res.user.id, username: res.user.username, role: "admin" });
+    const res = await createUser({ username, password, name, role: "admin", mustReset: false });
+    if (res.ok) {
+      setSession({
+        id: res.user.id,
+        username: res.user.username,
+        name: res.user.name || res.user.username,
+        role: "admin",
+        mustReset: false,
+      });
+    }
     return res;
+  }
+
+  // The logged-in user changes their own password (also clears must_reset).
+  async function changeOwnPassword(newPassword) {
+    const s = session();
+    if (!s) return { ok: false, error: "Not signed in." };
+    if (!newPassword || newPassword.length < 4)
+      return { ok: false, error: "Password must be at least 4 characters." };
+    const ph = await hash(s.username, newPassword);
+    const { error } = await sb
+      .from("app_users")
+      .update({ password_hash: ph, must_reset: false })
+      .eq("id", s.id);
+    if (error) return { ok: false, error: error.message };
+    setSession({ ...s, mustReset: false });
+    return { ok: true };
+  }
+
+  // ---- admin: manage other users ------------------------------------------
+  async function updateUser(id, { name, role }) {
+    const patch = {};
+    if (name !== undefined) patch.name = (name || "").trim() || null;
+    if (role !== undefined) patch.role = role === "admin" ? "admin" : "user";
+    const { error } = await sb.from("app_users").update(patch).eq("id", Number(id));
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
+  // Admin assigns a new temporary password; user must reset it on next login.
+  async function resetUserPassword(id, username, tempPassword) {
+    if (!tempPassword) return { ok: false, error: "Enter a temporary password." };
+    const ph = await hash(username, tempPassword);
+    const { error } = await sb
+      .from("app_users")
+      .update({ password_hash: ph, must_reset: true })
+      .eq("id", Number(id));
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   }
 
   async function deleteUser(id) {
     const { error } = await sb.from("app_users").delete().eq("id", Number(id));
-    if (error) throw error;
-  }
-  async function setRole(id, role) {
-    const { error } = await sb
-      .from("app_users")
-      .update({ role: role === "admin" ? "admin" : "user" })
-      .eq("id", Number(id));
     if (error) throw error;
   }
   async function setActive(id, active) {
@@ -137,14 +189,17 @@ const Auth = (() => {
     hasBackend,
     session,
     isAdmin,
+    displayName,
     logout,
     userCount,
     listUsers,
     login,
     createUser,
     createFirstAdmin,
+    changeOwnPassword,
+    updateUser,
+    resetUserPassword,
     deleteUser,
-    setRole,
     setActive,
   };
 })();

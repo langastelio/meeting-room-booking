@@ -9,8 +9,16 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <!-- Apply saved theme before paint to avoid a flash -->
   <script src="js/theme.js"></script>
-  <!-- Require login before showing the app -->
-  <script>if (!localStorage.getItem("mrb_session")) location.replace("login.html");</script>
+  <!-- Require login; force password reset if the account still has a temp password -->
+  <script>
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem("mrb_session"));
+        if (!s) location.replace("login.html");
+        else if (s.mustReset) location.replace("reset-password.html");
+      } catch (e) { location.replace("login.html"); }
+    })();
+  </script>
 </head>
 <body>
   <header>
@@ -40,8 +48,8 @@
           <label for="title">Meeting Title</label>
           <input id="title" type="text" placeholder="e.g. Sprint Planning" required />
 
-          <label for="bookedBy">Your Name</label>
-          <input id="bookedBy" type="text" placeholder="e.g. Carlos" required />
+          <label for="bookedBy">Booking as</label>
+          <input id="bookedBy" type="text" readonly title="You are booking as your signed-in account" />
 
           <label for="date">Date</label>
           <input id="date" type="date" required />

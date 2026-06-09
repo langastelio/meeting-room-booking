@@ -2,6 +2,8 @@
 
 const L = {
   form: document.getElementById("authForm"),
+  nameRow: document.getElementById("nameRow"),
+  fullName: document.getElementById("fullName"),
   username: document.getElementById("username"),
   password: document.getElementById("password"),
   btn: document.getElementById("authBtn"),
@@ -26,11 +28,16 @@ L.form.addEventListener("submit", async (e) => {
     const username = L.username.value.trim();
     const password = L.password.value;
     const res = firstRun
-      ? await Auth.createFirstAdmin({ username, password })
+      ? await Auth.createFirstAdmin({ username, password, name: L.fullName.value })
       : await Auth.login(username, password);
 
     if (!res.ok) {
       showAlert(res.error, false);
+      return;
+    }
+    // Force a password change if the account still has a temporary password.
+    if (!firstRun && Auth.session()?.mustReset) {
+      location.href = "reset-password.html";
       return;
     }
     location.href = "index.html";
@@ -54,6 +61,8 @@ L.form.addEventListener("submit", async (e) => {
       L.sub.textContent = "No accounts exist yet. The first account becomes the administrator.";
       L.btn.textContent = "Create admin & continue";
       L.password.setAttribute("autocomplete", "new-password");
+      L.nameRow.style.display = "block";
+      L.fullName.required = true;
     }
   } catch (err) {
     showAlert("Could not reach the database: " + (err.message || err), false);

@@ -146,9 +146,9 @@ function renderAll(preserveSelection) {
   await DB.init();
   // Default the date picker to today.
   els.date.value = new Date().toISOString().slice(0, 10);
-  // Prefill the booker's name with the signed-in user.
+  // The booker is always the signed-in person (read-only); show their name.
   const me = typeof Auth !== "undefined" ? Auth.session() : null;
-  if (me && els.bookedBy && !els.bookedBy.value) els.bookedBy.value = me.username;
+  if (me && els.bookedBy) els.bookedBy.value = me.name || me.username;
   renderAll();
 
   // Keep every browser in sync, three ways:

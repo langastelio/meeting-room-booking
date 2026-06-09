@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const s = Auth.session();
 
   const badge = document.getElementById("userBadge");
-  if (badge && s) badge.textContent = `${s.username} · ${s.role}`;
+  if (badge && s) badge.textContent = `${s.name || s.username} · ${s.role}`;
 
   // Hide admin-only navigation for non-admins.
   if (!s || s.role !== "admin") {

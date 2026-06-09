@@ -184,3 +184,11 @@ tr:last-child td { border-bottom: none; }
 }
 nav button.logout { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
 nav button.logout:hover { background: var(--danger); color: #fff; border-color: transparent; }
+
+/* ---- Read-only inputs (e.g. "Booking as") ---- */
+input[readonly] { opacity: 0.75; cursor: not-allowed; background: var(--surface); }
+
+/* ---- Inline edit row on the Users page ---- */
+.inline-edit input, .inline-edit select { padding: 6px 8px; font-size: 0.85rem; }
+td .btn-bar { gap: 6px; }
+td .btn-bar button { padding: 5px 10px; font-size: 0.8rem; }

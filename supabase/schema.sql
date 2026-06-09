@@ -59,11 +59,17 @@ create policy "bookings delete" on public.bookings for delete using (true);
 create table if not exists public.app_users (
   id            bigint generated always as identity primary key,
   username      text unique not null,
+  name          text,                         -- person's full name (shown in the app)
   password_hash text not null,
   role          text not null default 'user' check (role in ('admin','user')),
   active        boolean not null default true,
+  must_reset    boolean not null default false, -- true = must change password on next login
   created_at    timestamptz default now()
 );
+
+-- Migrate older installs that created app_users before these columns existed.
+alter table public.app_users add column if not exists name text;
+alter table public.app_users add column if not exists must_reset boolean not null default false;
 
 alter table public.app_users enable row level security;
 drop policy if exists "app_users all" on public.app_users;

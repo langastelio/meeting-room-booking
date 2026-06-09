@@ -12,6 +12,7 @@
       try {
         var s = JSON.parse(localStorage.getItem("mrb_session"));
         if (!s) location.replace("login.html");
+        else if (s.mustReset) location.replace("reset-password.html");
         else if (s.role !== "admin") location.replace("index.html");
       } catch (e) { location.replace("login.html"); }
     })();
@@ -39,11 +40,14 @@
       <section class="card">
         <h2>Create a User</h2>
         <form id="userForm">
-          <label for="newUsername">Username</label>
-          <input id="newUsername" type="text" placeholder="e.g. jdoe" autocomplete="off" required />
+          <label for="newName">Full name</label>
+          <input id="newName" type="text" placeholder="e.g. Stelio Langa" autocomplete="off" required />
 
-          <label for="newPassword">Password</label>
-          <input id="newPassword" type="text" placeholder="set an initial password" autocomplete="new-password" required />
+          <label for="newUsername">Username</label>
+          <input id="newUsername" type="text" placeholder="e.g. slanga" autocomplete="off" required />
+
+          <label for="newPassword">Temporary password</label>
+          <input id="newPassword" type="text" placeholder="they'll reset it on first login" autocomplete="new-password" required />
 
           <label for="newRole">Role</label>
           <select id="newRole">
@@ -61,7 +65,7 @@
         <h2>Existing Users</h2>
         <table>
           <thead>
-            <tr><th>Username</th><th>Role</th><th>Status</th><th>Actions</th></tr>
+            <tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Actions</th></tr>
           </thead>
           <tbody id="userList"></tbody>
         </table>
