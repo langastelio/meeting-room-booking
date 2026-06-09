@@ -1,5 +1,7 @@
 # 🗓️ Meeting Room Booking App
 
+DB PASS : SLDevStation@202
+
 A lightweight meeting-room booking app built with **plain HTML, CSS and JavaScript**, using an
 an **Excel (`.xlsx`) file as the database** (via [SheetJS](https://sheetjs.com)). Designed to deploy
 for free on **GitLab Pages**.
@@ -60,9 +62,48 @@ This is fine for a small team. The *only* thing it does **not** give you is many
 > If you leave `js/config.js` blank, the app runs straight from `database.xlsx` (changes stay in your
 > browser until you Export + commit).
 
-## 🔗 Optional: live shared saving (JSONBin) — 4 steps
+## 🟢 Live shared database (Supabase) — ACTIVE
 
-Use this **only if** you need many people booking live without anyone re-pushing the Excel file. When
+This app is wired to **Supabase** (a free hosted Postgres). When configured, all bookings and rooms
+are stored in the cloud, so **everyone, on every device, sees the same data live** — no re-pushing
+needed. The Excel file (`data/database.xlsx`) becomes the one-time seed.
+
+### One-time setup
+
+1. **Create the tables.** In your Supabase project: **SQL Editor → New query**, paste the contents of
+   [`supabase/schema.sql`](supabase/schema.sql), and click **Run**. This creates the `rooms` and
+   `bookings` tables and opens Row-Level-Security policies so the app can read/write.
+2. **Check the keys** in [`js/config.js`](js/config.js) — already filled with your project URL and
+   **publishable** key:
+   ```js
+   SUPABASE_URL: "https://egpahskzpayqnfhpcsjg.supabase.co",
+   SUPABASE_ANON_KEY: "sb_publishable_…",   // public by design — safe in the browser
+   ```
+3. **Reload the app.** On first run it seeds *Boardroom A* from `database.xlsx` into Supabase. Open the
+   app in two different browsers — a booking in one appears in the other. ✅
+
+### ⚠️ Security — do this now
+- **Never** put the `sb_secret_…` key or the database password / connection string in this app —
+  they'd be visible in the page source. Only the **publishable** key belongs here (it's protected by
+  Row Level Security).
+- Since the secret key and DB password were shared in chat, **rotate both**: Supabase → **Settings →
+  API keys** (roll secret key) and **Settings → Database** (reset password).
+- The RLS policies in `schema.sql` allow anyone with the URL to read/write (fine for an internal
+  tool). To lock it down, replace them with policies that require authentication.
+
+### How it maps
+| App | Supabase table | Notes |
+|-----|----------------|-------|
+| Rooms | `public.rooms` | `id, name, location, capacity, facilities, active` |
+| Bookings | `public.bookings` | snake_case columns (`room_id`, `booked_by`, `start_time`, …) mapped automatically in `db.js` |
+
+The no-overlap rule is enforced on every booking by re-reading that day's bookings from Supabase first.
+
+---
+
+## 🔗 Alternative: live shared saving (JSONBin) — 4 steps
+
+Use this **only if** you prefer JSONBin over Supabase (leave the Supabase fields blank in config). When
 enabled, `database.xlsx` becomes the initial seed and live data is mirrored to a shared JSONBin store.
 
 1. **Create a bin.** Sign up free at <https://jsonbin.io> → **Create Bin**. Paste this as the content

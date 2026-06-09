@@ -1,77 +1,46 @@
 /*
  * db.js — data layer for the Meeting Room Booking app.
  *
- * Two storage modes (chosen automatically from js/config.js):
+ * Backend is chosen automatically from js/config.js, in priority order:
  *
- *   SHARED  — when CONFIG.JSONBIN_BIN_ID + JSONBIN_KEY are set, the whole
- *             database ({rooms, bookings}) lives in one JSONBin.io bin, so
- *             every browser/person reads and writes the SAME data.
+ *   SUPABASE — CONFIG.SUPABASE_URL + SUPABASE_ANON_KEY set. Real hosted
+ *              Postgres with two tables (rooms, bookings). Shared & live:
+ *              everyone reads/writes the same data instantly.
+ *   JSONBIN  — CONFIG.JSONBIN_BIN_ID + JSONBIN_KEY set. One shared JSON doc.
+ *   LOCAL    — nothing configured. Data stays in this browser (localStorage).
  *
- *   LOCAL   — when config is blank, data is kept in this browser only
- *             (localStorage). Handy for testing without a backend.
+ * First-run data is seeded from the attached Excel file data/database.xlsx.
+ * You can also Export the live data to .xlsx or Import one.
  *
- * In both modes the seed comes from the spreadsheet files in /data, and you
- * can Export the live data to a real Excel (.xlsx) workbook or Import one.
- *
- * Cross-user double-booking: every write does READ-MODIFY-WRITE against the
- * latest shared data, so two people can't grab the same time slot.
+ * Double-booking rule (all modes): no two meetings may overlap in time on the
+ * same date. Writes re-check the freshest data first, so it holds across users.
  */
 
 const DB = (() => {
   const LOCAL_KEY = "mrb_db";
-  const BASE = "https://api.jsonbin.io/v3/b";
+  const JSONBIN_BASE = "https://api.jsonbin.io/v3/b";
 
-  const remote =
-    typeof CONFIG !== "undefined" && CONFIG.JSONBIN_BIN_ID && CONFIG.JSONBIN_KEY;
+  const has = (a, b) => typeof CONFIG !== "undefined" && CONFIG[a] && CONFIG[b];
+  const mode = has("SUPABASE_URL", "SUPABASE_ANON_KEY")
+    ? "supabase"
+    : has("JSONBIN_BIN_ID", "JSONBIN_KEY")
+    ? "jsonbin"
+    : "local";
 
-  // In-memory cache that the synchronous getters/render code reads from.
+  // Supabase client (only when in supabase mode and the library loaded).
+  let sb = null;
+  if (mode === "supabase") {
+    if (window.supabase && window.supabase.createClient) {
+      sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+    } else {
+      console.error("supabase-js failed to load — check the CDN <script> tag.");
+    }
+  }
+
+  // In-memory cache the synchronous getters/render code reads from.
   let state = { rooms: [], bookings: [] };
 
-  // ---- low-level storage ---------------------------------------------------
-  function headers(extra) {
-    return Object.assign({ "X-Master-Key": CONFIG.JSONBIN_KEY }, extra || {});
-  }
-
-  async function remoteLoad() {
-    const res = await fetch(`${BASE}/${CONFIG.JSONBIN_BIN_ID}/latest`, {
-      headers: headers({ "X-Bin-Meta": "false" }),
-      cache: "no-store",
-    });
-    if (!res.ok) throw new Error(`JSONBin read failed (${res.status})`);
-    const data = await res.json();
-    return normaliseDb(data);
-  }
-
-  async function remoteSave(data) {
-    const res = await fetch(`${BASE}/${CONFIG.JSONBIN_BIN_ID}`, {
-      method: "PUT",
-      headers: headers({ "Content-Type": "application/json", "X-Bin-Versioning": "false" }),
-      body: JSON.stringify(data),
-    });
-    if (!res.ok) throw new Error(`JSONBin write failed (${res.status})`);
-  }
-
-  // Always returns the freshest copy of the DB (remote or local).
-  async function load() {
-    if (remote) return await remoteLoad();
-    return normaliseDb(JSON.parse(localStorage.getItem(LOCAL_KEY) || "null"));
-  }
-
-  // Persists the DB and refreshes the in-memory cache.
-  async function save(data) {
-    if (remote) await remoteSave(data);
-    else localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
-    state = data;
-  }
-
-  function normaliseDb(data) {
-    const d = data && typeof data === "object" ? data : {};
-    return {
-      rooms: Array.isArray(d.rooms) ? d.rooms.map(normaliseRoom) : [],
-      bookings: Array.isArray(d.bookings) ? d.bookings : [],
-    };
-  }
-
+  // ---- shared helpers ------------------------------------------------------
   function normaliseRoom(r) {
     return {
       id: Number(r.id),
@@ -83,16 +52,52 @@ const DB = (() => {
     };
   }
 
-  // ---- the attached Excel file IS the database source ----------------------
-  // data/database.xlsx holds two sheets: "Rooms" and "Bookings".
+  const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
+
+  function conflictIn(bookings, { date, startTime, endTime, ignoreId }) {
+    return (
+      bookings.find(
+        (b) =>
+          b.date === date &&
+          b.id !== ignoreId &&
+          overlaps(startTime, endTime, b.startTime, b.endTime)
+      ) || null
+    );
+  }
+
+  const findConflict = (q) => conflictIn(state.bookings, q);
+  const nextId = (arr) => arr.reduce((m, x) => Math.max(m, Number(x.id) || 0), 0) + 1;
+
+  // ---- Supabase <-> app field mapping (bookings use snake_case in Postgres) -
+  const fromDbBooking = (r) => ({
+    id: r.id,
+    roomId: r.room_id,
+    roomName: r.room_name,
+    title: r.title,
+    bookedBy: r.booked_by,
+    date: r.date,
+    startTime: r.start_time,
+    endTime: r.end_time,
+    createdAt: r.created_at,
+  });
+  const toDbBooking = (b) => ({
+    room_id: b.roomId != null ? Number(b.roomId) : null,
+    room_name: b.roomName || "",
+    title: b.title,
+    booked_by: b.bookedBy || "",
+    date: b.date,
+    start_time: b.startTime,
+    end_time: b.endTime,
+  });
+
+  // ---- Excel seed (data/database.xlsx) -------------------------------------
   const SEED_FILE = "data/database.xlsx";
 
   function sheetRows(wb, name) {
-    const key = wb.SheetNames.find((n) => n.toLowerCase() === name) || null;
+    const key = wb.SheetNames.find((n) => n.toLowerCase() === name);
     return key ? XLSX.utils.sheet_to_json(wb.Sheets[key], { defval: "" }) : [];
   }
 
-  // Reads the whole DB ({rooms, bookings}) from the attached Excel workbook.
   async function seedFromExcel() {
     try {
       const res = await fetch(SEED_FILE, { cache: "no-store" });
@@ -108,38 +113,120 @@ const DB = (() => {
     }
   }
 
-  // ---- public init ---------------------------------------------------------
-  // Loads the DB; if there are no rooms yet, seeds from the spreadsheet.
-  async function init() {
-    let data;
-    try {
-      data = await load();
-    } catch (e) {
-      console.error(e);
-      // If the shared backend is unreachable, fall back to an empty cache so
-      // the UI still renders instead of throwing.
-      data = { rooms: [], bookings: [] };
+  // =========================================================================
+  //  SUPABASE backend
+  // =========================================================================
+  async function sbLoad() {
+    const [rRes, bRes] = await Promise.all([
+      sb.from("rooms").select("*").order("id", { ascending: true }),
+      sb.from("bookings").select("*").order("date").order("start_time"),
+    ]);
+    if (rRes.error) throw rRes.error;
+    if (bRes.error) throw bRes.error;
+    return {
+      rooms: (rRes.data || []).map(normaliseRoom),
+      bookings: (bRes.data || []).map(fromDbBooking),
+    };
+  }
+
+  async function sbClearAll() {
+    // Delete bookings first (FK), then rooms. gte(0) matches every row.
+    let res = await sb.from("bookings").delete().gte("id", 0);
+    if (res.error) throw res.error;
+    res = await sb.from("rooms").delete().gte("id", 0);
+    if (res.error) throw res.error;
+  }
+
+  async function sbInsertRooms(rooms) {
+    if (!rooms.length) return [];
+    const payload = rooms.map((r) => ({
+      name: r.name,
+      location: r.location,
+      capacity: r.capacity,
+      facilities: r.facilities,
+      active: r.active !== false,
+    }));
+    const { data, error } = await sb.from("rooms").insert(payload).select();
+    if (error) throw error;
+    return data;
+  }
+
+  // =========================================================================
+  //  JSONBIN / LOCAL backend (single {rooms, bookings} document)
+  // =========================================================================
+  function jbHeaders(extra) {
+    return Object.assign({ "X-Master-Key": CONFIG.JSONBIN_KEY }, extra || {});
+  }
+  function normaliseDoc(data) {
+    const d = data && typeof data === "object" ? data : {};
+    return {
+      rooms: Array.isArray(d.rooms) ? d.rooms.map(normaliseRoom) : [],
+      bookings: Array.isArray(d.bookings) ? d.bookings : [],
+    };
+  }
+  async function docLoad() {
+    if (mode === "jsonbin") {
+      const res = await fetch(`${JSONBIN_BASE}/${CONFIG.JSONBIN_BIN_ID}/latest`, {
+        headers: jbHeaders({ "X-Bin-Meta": "false" }),
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`JSONBin read failed (${res.status})`);
+      return normaliseDoc(await res.json());
     }
-    if (!data.rooms.length) {
-      const seed = await seedFromExcel();
-      data.rooms = seed.rooms;
-      if (!data.bookings.length) data.bookings = seed.bookings;
-      try {
-        await save(data);
-      } catch (e) {
-        console.warn("Could not persist seed:", e.message);
-      }
+    return normaliseDoc(JSON.parse(localStorage.getItem(LOCAL_KEY) || "null"));
+  }
+  async function docSave(data) {
+    if (mode === "jsonbin") {
+      const res = await fetch(`${JSONBIN_BASE}/${CONFIG.JSONBIN_BIN_ID}`, {
+        method: "PUT",
+        headers: jbHeaders({ "Content-Type": "application/json", "X-Bin-Versioning": "false" }),
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error(`JSONBin write failed (${res.status})`);
+    } else {
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(data));
     }
     state = data;
+  }
+
+  // =========================================================================
+  //  Public API (same surface for every backend)
+  // =========================================================================
+  async function init() {
+    try {
+      if (mode === "supabase") {
+        if (!sb) throw new Error("Supabase client not initialised.");
+        let data = await sbLoad();
+        if (!data.rooms.length) {
+          const seed = await seedFromExcel();
+          if (seed.rooms.length) {
+            await sbInsertRooms(seed.rooms);
+            data = await sbLoad();
+          }
+        }
+        state = data;
+      } else {
+        let data = await docLoad();
+        if (!data.rooms.length) {
+          const seed = await seedFromExcel();
+          data.rooms = seed.rooms;
+          if (!data.bookings.length) data.bookings = seed.bookings;
+          await docSave(data);
+        }
+        state = data;
+      }
+    } catch (e) {
+      console.error("init failed:", e.message || e);
+      state = { rooms: [], bookings: [] };
+    }
     return state;
   }
 
-  // Re-pull the latest shared data (used on window focus / manual refresh).
   async function refresh() {
     try {
-      state = await load();
+      state = mode === "supabase" ? await sbLoad() : await docLoad();
     } catch (e) {
-      console.warn("Refresh failed:", e.message);
+      console.warn("Refresh failed:", e.message || e);
     }
     return state;
   }
@@ -148,63 +235,88 @@ const DB = (() => {
   const getRooms = () => state.rooms.slice();
   const getActiveRooms = () => state.rooms.filter((r) => r.active);
   const getBookings = () => state.bookings.slice();
-  const isShared = () => !!remote;
+  const isShared = () => mode !== "local";
+  const backend = () => mode;
 
-  // ---- helpers -------------------------------------------------------------
-  const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
-
-  // Conflict against whatever DB object is passed in (the FRESH one on writes).
-  // Global rule: no two meetings may overlap in time on the same date,
-  // regardless of room.
-  function conflictIn(data, { date, startTime, endTime, ignoreId }) {
-    return (
-      data.bookings.find(
-        (b) =>
-          b.date === date &&
-          b.id !== ignoreId &&
-          overlaps(startTime, endTime, b.startTime, b.endTime)
-      ) || null
-    );
-  }
-
-  // Sync convenience check against the cache (for UI hints only).
-  const findConflict = (q) => conflictIn(state, q);
-
-  const nextId = (arr) => arr.reduce((max, x) => Math.max(max, Number(x.id) || 0), 0) + 1;
-
-  // ---- Rooms (async writes) ------------------------------------------------
+  // ---- Rooms ---------------------------------------------------------------
   async function addRoom({ name, location, capacity, facilities }) {
-    const data = await load();
-    const room = normaliseRoom({
-      id: nextId(data.rooms),
-      name, location, capacity, facilities, active: true,
-    });
-    data.rooms.push(room);
-    await save(data);
-    return room;
+    const clean = normaliseRoom({ name, location, capacity, facilities, active: true });
+    if (mode === "supabase") {
+      const { data, error } = await sb
+        .from("rooms")
+        .insert({
+          name: clean.name,
+          location: clean.location,
+          capacity: clean.capacity,
+          facilities: clean.facilities,
+          active: true,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      await refresh();
+      return normaliseRoom(data);
+    }
+    const data = await docLoad();
+    clean.id = nextId(data.rooms);
+    data.rooms.push(clean);
+    await docSave(data);
+    return clean;
   }
 
   async function deleteRoom(id) {
-    const data = await load();
+    if (mode === "supabase") {
+      const { error } = await sb.from("rooms").delete().eq("id", Number(id));
+      if (error) throw error;
+      await refresh();
+      return;
+    }
+    const data = await docLoad();
     data.rooms = data.rooms.filter((r) => r.id !== Number(id));
-    await save(data);
+    await docSave(data);
   }
 
-  // ---- Bookings (async, with cross-user conflict check) --------------------
+  // ---- Bookings (with cross-user conflict check) ---------------------------
   async function addBooking({ roomId, title, bookedBy, date, startTime, endTime }) {
     if (endTime <= startTime) {
       return { ok: false, error: "End time must be after start time." };
     }
-    // READ the freshest data so a conflict booked by someone else is caught.
-    const data = await load();
-    const conflict = conflictIn(data, { date, startTime, endTime });
-    if (conflict) {
-      const where = conflict.roomName ? ` in ${conflict.roomName}` : "";
-      return {
-        ok: false,
-        error: `That time clashes with "${conflict.title}"${where} (${conflict.startTime}–${conflict.endTime}). No two meetings can overlap.`,
-      };
+
+    if (mode === "supabase") {
+      // Check the freshest bookings for that date so we catch others' slots.
+      const { data: sameDay, error: qErr } = await sb
+        .from("bookings")
+        .select("*")
+        .eq("date", date);
+      if (qErr) throw qErr;
+      const conflict = conflictIn((sameDay || []).map(fromDbBooking), { date, startTime, endTime });
+      if (conflict) return { ok: false, error: clashMsg(conflict) };
+
+      const room = state.rooms.find((r) => r.id === Number(roomId));
+      const { data, error } = await sb
+        .from("bookings")
+        .insert(
+          toDbBooking({
+            roomId,
+            roomName: room ? room.name : "",
+            title,
+            bookedBy,
+            date,
+            startTime,
+            endTime,
+          })
+        )
+        .select()
+        .single();
+      if (error) throw error;
+      await refresh();
+      return { ok: true, booking: fromDbBooking(data) };
     }
+
+    // jsonbin / local
+    const data = await docLoad();
+    const conflict = conflictIn(data.bookings, { date, startTime, endTime });
+    if (conflict) return { ok: false, error: clashMsg(conflict) };
     const room = data.rooms.find((r) => r.id === Number(roomId));
     const booking = {
       id: nextId(data.bookings),
@@ -214,14 +326,25 @@ const DB = (() => {
       createdAt: new Date().toISOString(),
     };
     data.bookings.push(booking);
-    await save(data);
+    await docSave(data);
     return { ok: true, booking };
   }
 
+  function clashMsg(c) {
+    const where = c.roomName ? ` in ${c.roomName}` : "";
+    return `That time clashes with "${c.title}"${where} (${c.startTime}–${c.endTime}). No two meetings can overlap.`;
+  }
+
   async function deleteBooking(id) {
-    const data = await load();
+    if (mode === "supabase") {
+      const { error } = await sb.from("bookings").delete().eq("id", Number(id));
+      if (error) throw error;
+      await refresh();
+      return;
+    }
+    const data = await docLoad();
     data.bookings = data.bookings.filter((b) => Number(b.id) !== Number(id));
-    await save(data);
+    await docSave(data);
   }
 
   // ---- Excel import / export ----------------------------------------------
@@ -229,37 +352,64 @@ const DB = (() => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(getRooms()), "Rooms");
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(getBookings()), "Bookings");
-    // Same name/shape as the seed file, so you can drop it back into /data.
     XLSX.writeFile(wb, "database.xlsx");
   }
 
   async function importWorkbook(file) {
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: "array" });
-    const data = await load();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
     const findSheet = (name) => wb.SheetNames.find((n) => n.toLowerCase() === name);
-
     const roomsSheet = findSheet("rooms") || wb.SheetNames[0];
-    if (roomsSheet) {
-      data.rooms = XLSX.utils
-        .sheet_to_json(wb.Sheets[roomsSheet], { defval: "" })
-        .map(normaliseRoom);
-    }
     const bookingsSheet = findSheet("bookings");
-    if (bookingsSheet) {
-      data.bookings = XLSX.utils.sheet_to_json(wb.Sheets[bookingsSheet], { defval: "" });
+    const rooms = roomsSheet
+      ? XLSX.utils.sheet_to_json(wb.Sheets[roomsSheet], { defval: "" }).map(normaliseRoom).filter((r) => r.name)
+      : [];
+    const bookings = bookingsSheet
+      ? XLSX.utils.sheet_to_json(wb.Sheets[bookingsSheet], { defval: "" })
+      : [];
+
+    if (mode === "supabase") {
+      // Replace everything. Bookings get room_id nulled to avoid FK mismatches
+      // against freshly-assigned room ids (room_name is preserved).
+      await sbClearAll();
+      await sbInsertRooms(rooms);
+      if (bookings.length) {
+        const payload = bookings.map((b) =>
+          toDbBooking({
+            roomId: null,
+            roomName: b.roomName || "",
+            title: b.title || "(imported)",
+            bookedBy: b.bookedBy || "",
+            date: b.date,
+            startTime: b.startTime,
+            endTime: b.endTime,
+          })
+        );
+        const { error } = await sb.from("bookings").insert(payload);
+        if (error) throw error;
+      }
+      await refresh();
+      return;
     }
-    await save(data);
+
+    await docSave({ rooms, bookings });
   }
 
   async function resetToSeed() {
-    await save(await seedFromExcel());
+    const seed = await seedFromExcel();
+    if (mode === "supabase") {
+      await sbClearAll();
+      await sbInsertRooms(seed.rooms);
+      await refresh();
+      return;
+    }
+    await docSave(seed);
   }
 
   return {
     init,
     refresh,
     isShared,
+    backend,
     getRooms,
     getActiveRooms,
     getBookings,

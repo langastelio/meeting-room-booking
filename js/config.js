@@ -1,15 +1,22 @@
 /*
- * config.js — shared-database settings.
+ * config.js — backend settings.
  *
- * Paste your JSONBin.io details below to turn on SHARED bookings
- * (everyone, in every browser, sees the same data).
+ * The app picks a backend automatically, in this order:
+ *   1. Supabase   — if SUPABASE_URL + SUPABASE_ANON_KEY are set (shared, live).
+ *   2. JSONBin    — if JSONBIN_BIN_ID + JSONBIN_KEY are set (shared, simple).
+ *   3. Local-only — if everything is blank (data stays in this browser).
  *
- * Leave them blank to run in LOCAL-ONLY mode (data stays in this browser —
- * useful for testing).
- *
- * See the "Shared database (JSONBin)" section in README.md for the 4-step setup.
+ * ⚠️ Only put PUBLIC keys here. Anything in this file is visible to anyone who
+ *    views the page source. For Supabase that means the *publishable/anon* key
+ *    (safe by design, protected by Row Level Security) — NEVER the secret key
+ *    and NEVER the database password / connection string.
  */
 const CONFIG = {
-  JSONBIN_BIN_ID: "",   // e.g. "65f1c0e8dc74654018a1b2c3"
-  JSONBIN_KEY: "",      // your X-Master-Key (or an Access Key with Read + Update)
+  // --- Supabase (active) ---
+  SUPABASE_URL: "https://egpahskzpayqnfhpcsjg.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_9D4qfbNvzCpiUnzjkjH7jg_0lENB-uM",
+
+  // --- JSONBin (unused while Supabase is set) ---
+  JSONBIN_BIN_ID: "",
+  JSONBIN_KEY: "",
 };
