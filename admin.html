@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Meeting Room Booking</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- Apply saved theme before paint to avoid a flash -->
+  <script src="js/theme.js"></script>
+</head>
+<body>
+  <header>
+    <h1><span class="logo">▦</span> Meeting Room Booking</h1>
+    <nav>
+      <a href="index.html">Book a Room</a>
+      <a href="admin.html" class="active">Admin</a>
+      <button class="theme-toggle" type="button">☀️</button>
+    </nav>
+  </header>
+
+  <main>
+    <h2 class="page-title">Admin — Manage Rooms</h2>
+    <p class="page-sub">Add meeting rooms, then export the data to a real Excel workbook to make it permanent.</p>
+
+    <div class="grid two">
+      <!-- Add room form -->
+      <section class="card">
+        <h2>Add a Meeting Room</h2>
+        <form id="roomForm">
+          <label for="name">Room Name</label>
+          <input id="name" type="text" placeholder="e.g. Boardroom B" required />
+
+          <label for="location">Location</label>
+          <input id="location" type="text" placeholder="e.g. 2nd Floor - West Wing" required />
+
+          <label for="capacity">Capacity (seats)</label>
+          <input id="capacity" type="number" min="1" placeholder="e.g. 8" required />
+
+          <label for="facilities">Facilities (comma separated)</label>
+          <input id="facilities" type="text" placeholder="e.g. Projector, Whiteboard, TV" />
+
+          <button type="submit" class="block">Add Room</button>
+          <div id="roomAlert" class="alert"></div>
+        </form>
+      </section>
+
+      <!-- Data tools + room list -->
+      <div class="grid">
+        <section class="card">
+          <h2>Excel Database</h2>
+          <div class="btn-bar">
+            <button id="exportBtn">⬇ Export to Excel (.xlsx)</button>
+            <label class="ghost" style="display:inline-flex;align-items:center;padding:10px 16px;border-radius:8px;cursor:pointer;border:1px solid var(--border);">
+              ⬆ Import Excel/CSV
+              <input id="importInput" type="file" accept=".xlsx,.xls,.csv" hidden />
+            </label>
+            <button id="resetBtn" class="ghost">↺ Reset to seed file</button>
+          </div>
+          <p class="muted-note">
+            The database is <code>data/database.xlsx</code>. To make changes permanent, click
+            <strong>Export to Excel</strong> and replace <code>data/database.xlsx</code> with the
+            downloaded file, then push to GitHub. (Or set up JSONBin for instant shared saving.)
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>Current Rooms</h2>
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Location</th><th>Seats</th><th>Facilities</th><th>Status</th><th></th></tr>
+            </thead>
+            <tbody id="adminRoomList"></tbody>
+          </table>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

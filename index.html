@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meeting Room Booking</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <!-- SheetJS: lets us use Excel/CSV files as the database -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- Apply saved theme before paint to avoid a flash -->
+  <script src="js/theme.js"></script>
+</head>
+<body>
+  <header>
+    <h1><span class="logo">▦</span> Meeting Room Booking</h1>
+    <nav>
+      <a href="index.html" class="active">Book a Room</a>
+      <a href="admin.html">Admin</a>
+      <button class="theme-toggle" type="button">☀️</button>
+    </nav>
+  </header>
+
+  <main>
+    <h2 class="page-title">Book a Room</h2>
+    <p class="page-sub">Pick a room, choose a time slot and reserve it. Only one meeting can be booked per time slot — overlapping times are blocked.</p>
+
+    <div class="grid two">
+      <!-- Booking form -->
+      <section class="card">
+        <h2>New Booking</h2>
+        <form id="bookingForm">
+          <label for="room">Meeting Room</label>
+          <select id="room" required></select>
+
+          <label for="title">Meeting Title</label>
+          <input id="title" type="text" placeholder="e.g. Sprint Planning" required />
+
+          <label for="bookedBy">Your Name</label>
+          <input id="bookedBy" type="text" placeholder="e.g. Carlos" required />
+
+          <label for="date">Date</label>
+          <input id="date" type="date" required />
+
+          <div class="row">
+            <div>
+              <label for="startTime">Start</label>
+              <input id="startTime" type="time" required />
+            </div>
+            <div>
+              <label for="endTime">End</label>
+              <input id="endTime" type="time" required />
+            </div>
+          </div>
+
+          <button type="submit" class="block">Reserve Room</button>
+          <div id="formAlert" class="alert"></div>
+        </form>
+      </section>
+
+      <!-- Rooms + bookings -->
+      <div class="grid">
+        <section class="card">
+          <h2>Available Rooms</h2>
+          <div id="roomList" class="rooms"></div>
+        </section>
+
+        <section class="card">
+          <h2>Upcoming Bookings</h2>
+          <table>
+            <thead>
+              <tr><th>Room</th><th>Meeting</th><th>By</th><th>Date</th><th>Time</th><th></th></tr>
+            </thead>
+            <tbody id="bookingList"></tbody>
+          </table>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

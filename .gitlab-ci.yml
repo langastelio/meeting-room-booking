@@ -1,0 +1,15 @@
+# GitLab Pages deployment for a plain static site.
+# GitLab Pages publishes whatever ends up in the "public" folder.
+pages:
+  stage: deploy
+  image: alpine:latest
+  script:
+    - mkdir -p public
+    # Copy every site file into ./public (the folder GitLab Pages serves)
+    - cp -r index.html admin.html css js data public/
+  artifacts:
+    paths:
+      - public
+  rules:
+    # Only deploy from the default branch
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
