@@ -21,11 +21,15 @@ create table if not exists public.bookings (
   room_name   text,
   title       text not null,
   booked_by   text,
+  created_by  text,                 -- username of the account that made the booking
   date        date not null,
   start_time  text not null,
   end_time    text not null,
   created_at  timestamptz default now()
 );
+
+-- Migrate older installs that created bookings before created_by existed.
+alter table public.bookings add column if not exists created_by text;
 
 create index if not exists bookings_date_idx on public.bookings (date);
 

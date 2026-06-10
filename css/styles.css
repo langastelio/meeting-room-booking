@@ -192,3 +192,9 @@ input[readonly] { opacity: 0.75; cursor: not-allowed; background: var(--surface)
 .inline-edit input, .inline-edit select { padding: 6px 8px; font-size: 0.85rem; }
 td .btn-bar { gap: 6px; }
 td .btn-bar button { padding: 5px 10px; font-size: 0.8rem; }
+
+/* ---- Clash suggestions ---- */
+.suggestions { display: none; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); }
+.suggestions.show { display: block; }
+.suggestions .muted-note { margin: 8px 0 6px; }
+.suggestions .btn-bar { gap: 8px; }

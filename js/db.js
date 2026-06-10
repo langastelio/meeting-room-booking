@@ -54,10 +54,12 @@ const DB = (() => {
 
   const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
 
-  function conflictIn(bookings, { date, startTime, endTime, ignoreId }) {
+  // A clash is the SAME room being double-booked at an overlapping time.
+  function conflictIn(bookings, { roomId, date, startTime, endTime, ignoreId }) {
     return (
       bookings.find(
         (b) =>
+          Number(b.roomId) === Number(roomId) &&
           b.date === date &&
           b.id !== ignoreId &&
           overlaps(startTime, endTime, b.startTime, b.endTime)
@@ -68,6 +70,42 @@ const DB = (() => {
   const findConflict = (q) => conflictIn(state.bookings, q);
   const nextId = (arr) => arr.reduce((m, x) => Math.max(m, Number(x.id) || 0), 0) + 1;
 
+  // ---- time helpers + alternative-slot suggestions -------------------------
+  const toMin = (t) => { const [h, m] = String(t).split(":").map(Number); return h * 60 + m; };
+  const toHHMM = (m) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+
+  function roomFree(dayBookings, roomId, date, s, e, ignoreId) {
+    return !dayBookings.some(
+      (b) =>
+        Number(b.roomId) === Number(roomId) &&
+        b.date === date &&
+        b.id !== ignoreId &&
+        overlaps(s, e, b.startTime, b.endTime)
+    );
+  }
+
+  // Given a clash, suggest (a) other rooms free at the same time, and
+  // (b) other time slots (same duration) free in the requested room.
+  // Working window 08:00–18:00, 30-min steps.
+  function buildSuggestions(dayBookings, rooms, { roomId, date, startTime, endTime }) {
+    const activeRooms = rooms.filter((r) => r.active);
+
+    const freeRooms = activeRooms
+      .filter((r) => Number(r.id) !== Number(roomId))
+      .filter((r) => roomFree(dayBookings, r.id, date, startTime, endTime))
+      .map((r) => ({ id: r.id, name: r.name, location: r.location }));
+
+    const dur = toMin(endTime) - toMin(startTime);
+    const DAY_START = 8 * 60, DAY_END = 18 * 60, STEP = 30;
+    const times = [];
+    for (let s = DAY_START; s + dur <= DAY_END && times.length < 4; s += STEP) {
+      const sH = toHHMM(s), eH = toHHMM(s + dur);
+      if (sH === startTime) continue; // skip the slot that just clashed
+      if (roomFree(dayBookings, roomId, date, sH, eH)) times.push({ start: sH, end: eH });
+    }
+    return { rooms: freeRooms, times };
+  }
+
   // ---- Supabase <-> app field mapping (bookings use snake_case in Postgres) -
   const fromDbBooking = (r) => ({
     id: r.id,
@@ -75,6 +113,7 @@ const DB = (() => {
     roomName: r.room_name,
     title: r.title,
     bookedBy: r.booked_by,
+    createdBy: r.created_by,
     date: r.date,
     startTime: r.start_time,
     endTime: r.end_time,
@@ -85,6 +124,7 @@ const DB = (() => {
     room_name: b.roomName || "",
     title: b.title,
     booked_by: b.bookedBy || "",
+    created_by: b.createdBy || null,
     date: b.date,
     start_time: b.startTime,
     end_time: b.endTime,
@@ -314,21 +354,29 @@ const DB = (() => {
     await docSave(data);
   }
 
-  // ---- Bookings (with cross-user conflict check) ---------------------------
-  async function addBooking({ roomId, title, bookedBy, date, startTime, endTime }) {
+  // ---- Bookings (per-room conflict check + alternative suggestions) --------
+  async function addBooking({ roomId, title, bookedBy, createdBy, date, startTime, endTime }) {
     if (endTime <= startTime) {
       return { ok: false, error: "End time must be after start time." };
     }
 
     if (mode === "supabase") {
-      // Check the freshest bookings for that date so we catch others' slots.
-      const { data: sameDay, error: qErr } = await sb
+      // Read the freshest bookings for that date (catches others' slots live).
+      const { data: sameDayRaw, error: qErr } = await sb
         .from("bookings")
         .select("*")
         .eq("date", date);
       if (qErr) throw qErr;
-      const conflict = conflictIn((sameDay || []).map(fromDbBooking), { date, startTime, endTime });
-      if (conflict) return { ok: false, error: clashMsg(conflict) };
+      const sameDay = (sameDayRaw || []).map(fromDbBooking);
+
+      const conflict = conflictIn(sameDay, { roomId, date, startTime, endTime });
+      if (conflict) {
+        return {
+          ok: false,
+          error: clashMsg(conflict),
+          suggestions: buildSuggestions(sameDay, state.rooms, { roomId, date, startTime, endTime }),
+        };
+      }
 
       const room = state.rooms.find((r) => r.id === Number(roomId));
       const { data, error } = await sb
@@ -339,6 +387,7 @@ const DB = (() => {
             roomName: room ? room.name : "",
             title,
             bookedBy,
+            createdBy,
             date,
             startTime,
             endTime,
@@ -353,14 +402,20 @@ const DB = (() => {
 
     // jsonbin / local
     const data = await docLoad();
-    const conflict = conflictIn(data.bookings, { date, startTime, endTime });
-    if (conflict) return { ok: false, error: clashMsg(conflict) };
+    const conflict = conflictIn(data.bookings, { roomId, date, startTime, endTime });
+    if (conflict) {
+      return {
+        ok: false,
+        error: clashMsg(conflict),
+        suggestions: buildSuggestions(data.bookings, data.rooms, { roomId, date, startTime, endTime }),
+      };
+    }
     const room = data.rooms.find((r) => r.id === Number(roomId));
     const booking = {
       id: nextId(data.bookings),
       roomId: Number(roomId),
       roomName: room ? room.name : "",
-      title, bookedBy, date, startTime, endTime,
+      title, bookedBy, createdBy, date, startTime, endTime,
       createdAt: new Date().toISOString(),
     };
     data.bookings.push(booking);
@@ -369,8 +424,8 @@ const DB = (() => {
   }
 
   function clashMsg(c) {
-    const where = c.roomName ? ` in ${c.roomName}` : "";
-    return `That time clashes with "${c.title}"${where} (${c.startTime}–${c.endTime}). No two meetings can overlap.`;
+    const where = c.roomName ? `${c.roomName} is` : "That room is";
+    return `${where} already booked for "${c.title}" (${c.startTime}–${c.endTime}).`;
   }
 
   async function deleteBooking(id) {

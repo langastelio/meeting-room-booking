@@ -9,14 +9,29 @@ const els = {
   startTime: document.getElementById("startTime"),
   endTime: document.getElementById("endTime"),
   alert: document.getElementById("formAlert"),
+  suggestions: document.getElementById("suggestions"),
   roomList: document.getElementById("roomList"),
   bookingList: document.getElementById("bookingList"),
 };
 
+const esc = (s) =>
+  String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
 function showAlert(msg, ok) {
   els.alert.textContent = msg;
   els.alert.className = `alert show ${ok ? "ok" : "err"}`;
-  setTimeout(() => (els.alert.className = "alert"), 4000);
+  if (ok) setTimeout(() => (els.alert.className = "alert"), 4000);
+}
+
+// Who may cancel a booking: admins cancel any; users cancel only their own.
+function canCancel(b) {
+  const me = typeof Auth !== "undefined" ? Auth.session() : null;
+  if (!me) return false;
+  if (me.role === "admin") return true;
+  if (b.createdBy && b.createdBy === me.username) return true;
+  // Fallback for bookings made before created_by existed: match by name.
+  if (!b.createdBy && b.bookedBy && b.bookedBy === (me.name || me.username)) return true;
+  return false;
 }
 
 function renderRoomOptions() {
@@ -75,12 +90,12 @@ function renderBookings() {
     .map(
       (b) => `
       <tr>
-        <td>${b.roomName}</td>
-        <td>${b.title}</td>
-        <td>${b.bookedBy}</td>
-        <td>${b.date}</td>
-        <td>${b.startTime}–${b.endTime}</td>
-        <td><button class="icon-btn" data-del="${b.id}" title="Cancel">✕</button></td>
+        <td>${esc(b.roomName)}</td>
+        <td>${esc(b.title)}</td>
+        <td>${esc(b.bookedBy)}</td>
+        <td>${esc(b.date)}</td>
+        <td>${esc(b.startTime)}–${esc(b.endTime)}</td>
+        <td>${canCancel(b) ? `<button class="icon-btn" data-del="${b.id}" title="Cancel booking">✕</button>` : ""}</td>
       </tr>`
     )
     .join("");
@@ -88,38 +103,92 @@ function renderBookings() {
   els.bookingList.querySelectorAll("[data-del]").forEach((btn) => {
     btn.addEventListener("click", async () => {
       if (confirm("Cancel this booking?")) {
-        await DB.deleteBooking(btn.dataset.del);
-        renderBookings();
+        try {
+          await DB.deleteBooking(btn.dataset.del);
+          renderBookings();
+        } catch (err) {
+          showAlert("Could not cancel: " + err.message, false);
+        }
       }
     });
   });
+}
+
+function clearSuggestions() {
+  els.suggestions.innerHTML = "";
+  els.suggestions.classList.remove("show");
+}
+
+// Show clickable alternatives after a clash. Clicking one applies it and re-books.
+function renderSuggestions(s) {
+  if (!s || (!s.rooms.length && !s.times.length)) {
+    els.suggestions.innerHTML = `<p class="muted-note">No free alternatives found in 08:00–18:00 that day. Try another day.</p>`;
+    els.suggestions.classList.add("show");
+    return;
+  }
+  let html = "";
+  if (s.rooms.length) {
+    html += `<p class="muted-note">Free rooms at the same time:</p><div class="btn-bar">`;
+    html += s.rooms
+      .map((r) => `<button type="button" class="ghost" data-room="${r.id}">${esc(r.name)}</button>`)
+      .join("");
+    html += `</div>`;
+  }
+  if (s.times.length) {
+    html += `<p class="muted-note">Free times for this room:</p><div class="btn-bar">`;
+    html += s.times
+      .map((t) => `<button type="button" class="ghost" data-start="${t.start}" data-end="${t.end}">${t.start}–${t.end}</button>`)
+      .join("");
+    html += `</div>`;
+  }
+  els.suggestions.innerHTML = html;
+  els.suggestions.classList.add("show");
+
+  els.suggestions.querySelectorAll("[data-room]").forEach((b) =>
+    b.addEventListener("click", () => {
+      els.room.value = b.dataset.room;
+      highlightSelected();
+      els.form.requestSubmit();
+    })
+  );
+  els.suggestions.querySelectorAll("[data-start]").forEach((b) =>
+    b.addEventListener("click", () => {
+      els.startTime.value = b.dataset.start;
+      els.endTime.value = b.dataset.end;
+      els.form.requestSubmit();
+    })
+  );
 }
 
 els.form.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!els.room.value) return showAlert("Please add a room first.", false);
 
+  const me = typeof Auth !== "undefined" ? Auth.session() : null;
   const btn = els.form.querySelector('button[type="submit"]');
   btn.disabled = true;
   btn.textContent = "Reserving…";
+  clearSuggestions();
   try {
     const result = await DB.addBooking({
       roomId: els.room.value,
       title: els.title.value.trim(),
       bookedBy: els.bookedBy.value.trim(),
+      createdBy: me ? me.username : null,
       date: els.date.value,
       startTime: els.startTime.value,
       endTime: els.endTime.value,
     });
 
-    if (!result.ok) return showAlert(result.error, false);
+    if (!result.ok) {
+      showAlert(result.error, false);
+      if (result.suggestions) renderSuggestions(result.suggestions);
+      return;
+    }
 
-    showAlert(
-      DB.isShared() ? "Room booked and shared with everyone." : "Room booked! (local only — set up JSONBin to share)",
-      true
-    );
-    els.form.reset();
-    els.date.value = new Date().toISOString().slice(0, 10);
+    showAlert("Room booked.", true);
+    clearSuggestions();
+    els.title.value = "";
     renderRoomOptions();
     renderBookings();
   } catch (err) {
