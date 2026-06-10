@@ -1,26 +1,43 @@
 /*
- * idle.js — automatically sign the user out after 15 minutes of inactivity.
- * Activity in any tab keeps the session alive (shared via localStorage), and an
- * idle period that spans a closed tab is also caught on next load.
+ * idle.js — sign the user out after 15 minutes of inactivity, scoped to the
+ * current browser (tab) session.
+ *
+ * The idle clock is keyed to a per-tab sessionStorage flag, so a freshly opened
+ * session never logs out on its first load just because an old timestamp is
+ * sitting in localStorage. On logout the timestamp is cleared so the next login
+ * starts clean.
  */
 (function () {
   if (typeof Auth === "undefined" || !Auth.session()) return; // only when signed in
 
   var KEY = "mrb_last_activity";
-  var LIMIT_MS = 15 * 60 * 1000; // 15 minutes
+  var TAB = "mrb_session_started"; // per-tab marker (sessionStorage)
+  var LIMIT_MS = 15 * 60 * 1000;   // 15 minutes
   var now = function () { return Date.now(); };
 
-  function signOutIdle() {
+  function endSession() {
+    localStorage.removeItem(KEY);
+    try { sessionStorage.removeItem(TAB); } catch (e) {}
     localStorage.setItem("mrb_logout_reason", "idle");
     Auth.logout(); // clears the session and redirects to login
   }
 
-  // If we were left idle past the limit (even with the tab closed), sign out now.
-  var last = parseInt(localStorage.getItem(KEY) || "0", 10);
-  if (last && now() - last > LIMIT_MS) { signOutIdle(); return; }
-  localStorage.setItem(KEY, String(now()));
+  var fresh = false;
+  try { fresh = !sessionStorage.getItem(TAB); } catch (e) { fresh = true; }
 
-  // Record activity (throttled so we don't hammer localStorage).
+  if (fresh) {
+    // Brand-new tab/session: start the idle clock now — never auto-logout on
+    // the first load (this is what caused the false "signed out" message).
+    try { sessionStorage.setItem(TAB, "1"); } catch (e) {}
+    localStorage.setItem(KEY, String(now()));
+  } else {
+    // Continuing in the same tab session: enforce the idle limit.
+    var last = parseInt(localStorage.getItem(KEY) || "0", 10);
+    if (last && now() - last > LIMIT_MS) { endSession(); return; }
+    localStorage.setItem(KEY, String(now()));
+  }
+
+  // Record activity (throttled).
   var lastWrite = 0;
   function mark() {
     var n = now();
@@ -30,9 +47,9 @@
     window.addEventListener(ev, mark, { passive: true });
   });
 
-  // Check periodically whether the idle limit has been exceeded.
+  // Periodically enforce the idle limit while the page stays open.
   setInterval(function () {
     var l = parseInt(localStorage.getItem(KEY) || "0", 10);
-    if (now() - l > LIMIT_MS) signOutIdle();
+    if (l && now() - l > LIMIT_MS) endSession();
   }, 30000);
 })();

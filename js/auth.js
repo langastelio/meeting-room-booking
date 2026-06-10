@@ -46,6 +46,7 @@ const Auth = (() => {
 
   function logout() {
     localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem("mrb_last_activity"); // clean idle clock for next login
     location.href = "login.html";
   }
 

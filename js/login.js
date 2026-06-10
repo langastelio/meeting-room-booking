@@ -61,6 +61,15 @@ if (togglePass) {
   });
 }
 
+// 5-second animated splash loader, then reveal the login form.
+setTimeout(function () {
+  var loader = document.getElementById("loader");
+  if (loader) {
+    loader.classList.add("hide");
+    setTimeout(function () { loader.remove(); }, 600);
+  }
+}, 5000);
+
 // Notice if the previous session ended due to inactivity.
 if (localStorage.getItem("mrb_logout_reason") === "idle") {
   localStorage.removeItem("mrb_logout_reason");

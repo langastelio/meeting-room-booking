@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Meeting Room Booking System — Documentation</title>
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #1a1a1a; line-height: 1.4; }
+  h1 { font-size: 26pt; color: #1d4ed8; margin-bottom: 0; }
+  h2 { font-size: 16pt; color: #1d4ed8; border-bottom: 1px solid #c7d2fe; padding-bottom: 3px; margin-top: 22px; }
+  h3 { font-size: 12.5pt; color: #1e3a8a; margin-bottom: 2px; }
+  .subtitle { font-size: 12pt; color: #555; margin-top: 4px; }
+  .meta { color: #666; font-size: 10pt; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 14px; }
+  th, td { border: 1px solid #b8c2cc; padding: 6px 8px; text-align: left; vertical-align: top; font-size: 10.5pt; }
+  th { background: #e8eefc; color: #1e3a8a; }
+  code { background: #f1f5f9; padding: 1px 4px; font-family: Consolas, monospace; font-size: 10pt; }
+  ul { margin-top: 4px; }
+  li { margin-bottom: 3px; }
+  .tag { background:#e8eefc; color:#1e3a8a; border-radius:8px; padding:1px 7px; font-size:9pt; }
+</style>
+</head>
+<body>
+
+<h1>Meeting Room Booking System</h1>
+<p class="subtitle">System Requirements &amp; Functional Specification</p>
+<p class="meta">Document version 1.0 &nbsp;|&nbsp; Date: 10 June 2026 &nbsp;|&nbsp; Live URL: https://langastelio.github.io/meeting-room-booking/</p>
+
+<h2>1. Introduction</h2>
+<p>The Meeting Room Booking System is a lightweight, web-based application that lets an organisation
+manage meeting rooms and reserve them for meetings. It enforces access control through user accounts
+and roles, prevents double-booking of rooms, supports cancellations with reasons, sends meeting
+reminders, and keeps a full history of meetings for reporting.</p>
+<p>The application is a 100% static front-end (HTML, CSS and vanilla JavaScript) hosted on GitHub
+Pages, backed by a Supabase (PostgreSQL) cloud database accessed directly from the browser. There is
+no custom application server to maintain.</p>
+
+<h2>2. System Overview</h2>
+<table>
+  <tr><th>Item</th><th>Description</th></tr>
+  <tr><td>Application type</td><td>Static single-page-style web application (multi-page)</td></tr>
+  <tr><td>Front-end</td><td>HTML5, CSS3, vanilla JavaScript (no framework)</td></tr>
+  <tr><td>Database</td><td>Supabase (hosted PostgreSQL) via the Supabase JavaScript client / PostgREST</td></tr>
+  <tr><td>Hosting</td><td>GitHub Pages (static hosting)</td></tr>
+  <tr><td>Initial data seed</td><td>Excel workbook <code>data/database.xlsx</code> (read once via SheetJS)</td></tr>
+  <tr><td>Authentication</td><td>Custom username/password gate (SHA-256 hashed) stored in the database</td></tr>
+  <tr><td>Real-time sync</td><td>Supabase Realtime + 5-second polling so all browsers stay in sync</td></tr>
+</table>
+
+<h2>3. Technology Stack</h2>
+<ul>
+  <li><b>HTML / CSS / JavaScript</b> — user interface and application logic.</li>
+  <li><b>Supabase (PostgreSQL)</b> — cloud database, accessed with the public <i>publishable</i> key and Row Level Security.</li>
+  <li><b>SheetJS (xlsx)</b> — reads the seed Excel workbook on first run.</li>
+  <li><b>GitHub Pages</b> — free static hosting and automatic deployment on push.</li>
+  <li><b>Web Notifications API</b> — browser notifications for meeting reminders (with in-page toast fallback).</li>
+</ul>
+
+<h2>4. User Roles &amp; Permissions</h2>
+<table>
+  <tr><th>Capability</th><th>Administrator</th><th>Standard User</th></tr>
+  <tr><td>Sign in</td><td>Yes</td><td>Yes</td></tr>
+  <tr><td>Book a room</td><td>Yes</td><td>Yes</td></tr>
+  <tr><td>Cancel a booking</td><td>Any booking</td><td>Only their own bookings</td></tr>
+  <tr><td>Manage rooms (add / edit / activate / delete)</td><td>Yes</td><td>No</td></tr>
+  <tr><td>Manage users (create / edit / reset / disable / delete)</td><td>Yes</td><td>No</td></tr>
+  <tr><td>View History / reporting page</td><td>Yes</td><td>No</td></tr>
+</table>
+<p>The first account ever created automatically becomes the Administrator. After that, only
+administrators can create further accounts. Non-admin users do not see the Admin, Users or History
+navigation links, and those pages redirect them away if accessed directly.</p>
+
+<h2>5. Functional Requirements</h2>
+
+<h3>5.1 Authentication &amp; Access Control</h3>
+<ul>
+  <li>Every page requires a signed-in session; unauthenticated visitors are redirected to the login page.</li>
+  <li><b>First-run setup:</b> when no accounts exist, the login page switches to "Create the first admin" and the first registered account becomes the administrator.</li>
+  <li><b>Roles:</b> Administrator and Standard User, controlling page access and actions.</li>
+  <li><b>Forced password reset:</b> accounts created by an admin receive a temporary password and must set their own password on first login before using the app.</li>
+  <li><b>Idle auto-logout:</b> users are automatically signed out after 15 minutes of inactivity (mouse, keyboard, scroll, touch). Activity in any open tab keeps the session alive; an idle period that spans a closed tab is detected on next load. The login page then displays a notice.</li>
+  <li>Passwords are hashed with SHA-256 (with a salt) before storage; plain passwords are never stored.</li>
+</ul>
+
+<h3>5.2 User Management (Admin)</h3>
+<ul>
+  <li>Create users with <b>full name</b>, <b>username</b>, <b>temporary password</b> and <b>role</b> (Admin or User).</li>
+  <li>Edit a user's name and role inline.</li>
+  <li>Reset a user's password (issues a new temporary password requiring reset on next login).</li>
+  <li>Enable or disable an account (disabled accounts cannot sign in).</li>
+  <li>Delete a user.</li>
+  <li>Administrators cannot change or delete their own account, preventing accidental lock-out.</li>
+  <li>Usernames are validated against a safe character whitelist (letters, numbers, and <code>. _ - @</code>, 3–50 characters).</li>
+</ul>
+
+<h3>5.3 Meeting Room Management (Admin)</h3>
+<ul>
+  <li>Add a room with name, location, capacity and facilities.</li>
+  <li>Edit room details inline.</li>
+  <li>Activate / deactivate a room. Inactive rooms retain their data but cannot be booked and do not appear on the booking page.</li>
+  <li>Delete a room (existing bookings are retained).</li>
+</ul>
+
+<h3>5.4 Booking a Room</h3>
+<ul>
+  <li>Select a room, enter a meeting title, choose a date, and a start and end time.</li>
+  <li>The "Booking as" field is read-only and shows the signed-in person's name; the booking is recorded under that name and account.</li>
+  <li><b>Conflict prevention (per room):</b> a room cannot be double-booked for overlapping times on the same day. The check is performed against the latest data before saving, so it holds across all users.</li>
+  <li><b>Alternative suggestions:</b> when a clash occurs, the system suggests (a) other rooms free at the same time, and (b) other free time slots for the chosen room (08:00–18:00, 30-minute steps). Each suggestion can be clicked to re-book instantly.</li>
+  <li>Bookings are shared and synchronised live across all browsers.</li>
+</ul>
+
+<h3>5.5 Cancelling a Meeting</h3>
+<ul>
+  <li>Cancellation opens an in-app modal requiring a <b>reason</b>.</li>
+  <li>A cancelled meeting is not deleted; it is marked as cancelled and retains <b>who cancelled it</b>, the <b>reason</b>, and the <b>time of cancellation</b> for the audit trail.</li>
+  <li>Cancelled meetings free up the room (the slot can be re-booked) and are removed from the Upcoming list.</li>
+  <li>Standard users can only cancel their own meetings; administrators can cancel any meeting.</li>
+</ul>
+
+<h3>5.6 Notifications</h3>
+<ul>
+  <li><b>Meeting reminders:</b> for a user's own upcoming meetings, reminders appear at 30, 15 and 5 minutes before the start time, as a browser notification (if permitted) and an in-page toast. Reminders work while the app tab is open.</li>
+  <li><b>Admin-cancellation notice:</b> when an administrator cancels a meeting that belongs to another user, that user receives a notification (including the reason) the next time they are on the app.</li>
+</ul>
+
+<h3>5.7 Upcoming Meetings &amp; History (Reporting)</h3>
+<ul>
+  <li>The booking page lists only <b>upcoming</b> meetings; meetings that have already ended are removed from this list automatically (they are not deleted).</li>
+  <li>The <b>History</b> page (admin-only) lists completed and cancelled meetings, newest first, with a date-range filter.</li>
+  <li>History shows status (Held / Cancelled), who cancelled, and the cancellation reason.</li>
+  <li>History can be exported to a <b>CSV</b> file for reporting.</li>
+</ul>
+
+<h3>5.8 User Interface</h3>
+<ul>
+  <li><b>Dark / light theme</b> toggle, remembered per browser and following the operating-system preference by default.</li>
+  <li><b>Responsive design</b> for desktop, tablet and mobile (collapsing columns, wrapping navigation, horizontally scrollable tables).</li>
+  <li>Branded <b>favicon</b> shown on every browser tab.</li>
+</ul>
+
+<h2>6. Non-Functional Requirements</h2>
+<table>
+  <tr><th>Category</th><th>Requirement</th></tr>
+  <tr><td>Availability</td><td>Hosted on GitHub Pages and Supabase cloud; no local server required.</td></tr>
+  <tr><td>Performance</td><td>Lightweight static assets; live sync via Realtime with a 5-second polling fallback.</td></tr>
+  <tr><td>Usability</td><td>Clean, consistent UI; in-app modals and toasts instead of native browser dialogs where practical.</td></tr>
+  <tr><td>Compatibility</td><td>Modern browsers (Chrome, Edge, Firefox, Safari). Uses SVG favicons and the CSS <code>:has()</code> selector.</td></tr>
+  <tr><td>Responsiveness</td><td>Adapts to screen widths down to small phones.</td></tr>
+  <tr><td>Security</td><td>Hashed passwords, role-based UI access, input validation, output escaping, idle logout, parameterised database access.</td></tr>
+  <tr><td>Maintainability</td><td>Plain HTML/CSS/JS, modular JavaScript files, single source-of-truth database schema file.</td></tr>
+</table>
+
+<h2>7. Data Model</h2>
+<p>The database (Supabase / PostgreSQL) contains four tables.</p>
+
+<h3>7.1 rooms</h3>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>bigint (PK)</td><td>Unique room identifier</td></tr>
+  <tr><td>name</td><td>text</td><td>Room name</td></tr>
+  <tr><td>location</td><td>text</td><td>Physical location</td></tr>
+  <tr><td>capacity</td><td>integer</td><td>Number of seats</td></tr>
+  <tr><td>facilities</td><td>text</td><td>Comma-separated facilities</td></tr>
+  <tr><td>active</td><td>boolean</td><td>Whether the room is bookable</td></tr>
+</table>
+
+<h3>7.2 bookings</h3>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>bigint (PK)</td><td>Unique booking identifier</td></tr>
+  <tr><td>room_id</td><td>bigint (FK)</td><td>Booked room</td></tr>
+  <tr><td>room_name</td><td>text</td><td>Room name snapshot</td></tr>
+  <tr><td>title</td><td>text</td><td>Meeting title</td></tr>
+  <tr><td>booked_by</td><td>text</td><td>Name of the person who booked</td></tr>
+  <tr><td>created_by</td><td>text</td><td>Username of the account that created the booking</td></tr>
+  <tr><td>date</td><td>date</td><td>Meeting date</td></tr>
+  <tr><td>start_time / end_time</td><td>text</td><td>Meeting time window</td></tr>
+  <tr><td>status</td><td>text</td><td>'booked' or 'cancelled'</td></tr>
+  <tr><td>cancelled_by</td><td>text</td><td>Name of whoever cancelled</td></tr>
+  <tr><td>cancel_reason</td><td>text</td><td>Reason for cancellation</td></tr>
+  <tr><td>cancelled_at</td><td>timestamptz</td><td>When it was cancelled</td></tr>
+</table>
+
+<h3>7.3 app_users</h3>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>bigint (PK)</td><td>Unique user identifier</td></tr>
+  <tr><td>username</td><td>text (unique)</td><td>Login username</td></tr>
+  <tr><td>name</td><td>text</td><td>Person's full name</td></tr>
+  <tr><td>password_hash</td><td>text</td><td>SHA-256 hash of the password</td></tr>
+  <tr><td>role</td><td>text</td><td>'admin' or 'user'</td></tr>
+  <tr><td>active</td><td>boolean</td><td>Whether the account can sign in</td></tr>
+  <tr><td>must_reset</td><td>boolean</td><td>Force a password change on next login</td></tr>
+</table>
+
+<h3>7.4 notifications</h3>
+<table>
+  <tr><th>Column</th><th>Type</th><th>Description</th></tr>
+  <tr><td>id</td><td>bigint (PK)</td><td>Unique notification identifier</td></tr>
+  <tr><td>recipient</td><td>text</td><td>Username the message is for</td></tr>
+  <tr><td>message</td><td>text</td><td>Notification text</td></tr>
+  <tr><td>read</td><td>boolean</td><td>Whether it has been shown</td></tr>
+  <tr><td>created_at</td><td>timestamptz</td><td>When it was created</td></tr>
+</table>
+
+<h2>8. Security Considerations</h2>
+<ul>
+  <li><b>Public key only:</b> the browser uses Supabase's <i>publishable</i> key, which is safe to expose. The secret key and database password are never placed in the application.</li>
+  <li><b>Password hashing:</b> passwords are hashed (SHA-256 with a salt) on the client before storage.</li>
+  <li><b>SQL injection:</b> all database access goes through the Supabase client using parameterised methods (<code>.eq</code>, <code>.insert</code>, <code>.update</code>, <code>.delete</code>). No SQL is built from user input, so SQL injection is not possible through the application.</li>
+  <li><b>Input validation:</b> usernames are restricted to a safe character whitelist.</li>
+  <li><b>Output escaping:</b> user-supplied text is HTML-escaped before display, mitigating cross-site scripting (XSS).</li>
+  <li><b>Idle logout:</b> sessions end automatically after 15 minutes of inactivity.</li>
+  <li><b>Current limitation:</b> the login is a "simple gate" — Row Level Security policies are permissive, so a technically skilled user with the public key could reach the data directly. For stronger protection the system can be upgraded to Supabase Auth with restrictive policies.</li>
+</ul>
+
+<h2>9. Deployment</h2>
+<ol>
+  <li><b>Database:</b> create a Supabase project and run the schema script (<code>supabase/schema.sql</code>) in the SQL Editor to create tables, security policies and Realtime.</li>
+  <li><b>Configuration:</b> set the Supabase project URL and publishable key in <code>js/config.js</code>.</li>
+  <li><b>Hosting:</b> push the repository to GitHub and enable GitHub Pages (Deploy from branch → main → root). The site publishes at <code>https://&lt;username&gt;.github.io/&lt;repo&gt;/</code>.</li>
+  <li><b>Updates:</b> every push to the main branch redeploys automatically.</li>
+</ol>
+
+<h2>10. Limitations &amp; Future Enhancements</h2>
+<ul>
+  <li>Meeting reminders only fire while an app tab is open (static hosting cannot push when closed). A future enhancement could add server-side or push-service reminders.</li>
+  <li>Upgrade from the simple login gate to full Supabase Authentication with restrictive Row Level Security.</li>
+  <li>Optional enhancements: weekly calendar view, recurring bookings, capacity-aware room suggestions, configurable working hours, and a pre-logout warning prompt.</li>
+</ul>
+
+<h2>11. Page Inventory</h2>
+<table>
+  <tr><th>Page</th><th>Audience</th><th>Purpose</th></tr>
+  <tr><td>login.html</td><td>All</td><td>Sign in / create first admin</td></tr>
+  <tr><td>reset-password.html</td><td>All (signed in)</td><td>Set a new password (forced on first login)</td></tr>
+  <tr><td>index.html</td><td>All users</td><td>Book a room; view upcoming meetings</td></tr>
+  <tr><td>admin.html</td><td>Admin</td><td>Manage meeting rooms</td></tr>
+  <tr><td>users.html</td><td>Admin</td><td>Manage user accounts</td></tr>
+  <tr><td>history.html</td><td>Admin</td><td>Reporting on past &amp; cancelled meetings</td></tr>
+</table>
+
+</body>
+</html>

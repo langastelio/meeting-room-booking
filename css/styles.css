@@ -277,3 +277,24 @@ td .btn-bar button { padding: 5px 10px; font-size: 0.8rem; }
   .modal { max-width: none; }
   nav a, nav button.logout { padding: 6px 9px; }
 }
+
+/* ---- Login splash loader (5s) ---- */
+.loader-overlay {
+  position: fixed; inset: 0; z-index: 99999;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  transition: opacity .5s ease;
+}
+.loader-overlay.hide { opacity: 0; pointer-events: none; }
+.loader-brand { color: var(--text); font-size: 1.3rem; font-weight: 700; letter-spacing: .3px; }
+.loader-brand .logo { color: var(--primary); }
+.loader-spinner {
+  width: 54px; height: 54px; border-radius: 50%;
+  border: 5px solid var(--surface-2); border-top-color: var(--primary);
+  animation: mrbSpin .9s linear infinite;
+}
+.loader-text { color: var(--muted); font-size: .85rem; letter-spacing: .5px; }
+.loader-bar { width: 180px; height: 4px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.loader-bar span { display: block; height: 100%; width: 40%; border-radius: 999px; background: var(--primary); animation: mrbProgress 5s ease-in-out forwards; }
+@keyframes mrbSpin { to { transform: rotate(360deg); } }
+@keyframes mrbProgress { 0% { width: 0; } 100% { width: 100%; } }
