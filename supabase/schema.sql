@@ -79,11 +79,27 @@ alter table public.app_users enable row level security;
 drop policy if exists "app_users all" on public.app_users;
 create policy "app_users all" on public.app_users for all using (true) with check (true);
 
+-- ---- Notifications ----------------------------------------------------------
+-- Messages addressed to a user (e.g. "an admin cancelled your meeting").
+-- Shown to the recipient next time they're on the app.
+create table if not exists public.notifications (
+  id          bigint generated always as identity primary key,
+  recipient   text not null,        -- username the message is for
+  message     text not null,
+  read        boolean not null default false,
+  created_at  timestamptz default now()
+);
+create index if not exists notifications_recipient_idx on public.notifications (recipient, read);
+
+alter table public.notifications enable row level security;
+drop policy if exists "notifications all" on public.notifications;
+create policy "notifications all" on public.notifications for all using (true) with check (true);
+
 -- ---- Realtime (optional but recommended) -----------------------------------
 -- Lets the app receive instant push updates so other browsers refresh on their
 -- own. The app also polls every 5s, so this is a bonus, not required.
 do $$ begin
-  alter publication supabase_realtime add table public.rooms, public.bookings;
+  alter publication supabase_realtime add table public.rooms, public.bookings, public.notifications;
 exception when others then null;  -- already added / not available: ignore
 end $$;
 

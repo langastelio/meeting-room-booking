@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Hide admin-only navigation for non-admins.
   if (!s || s.role !== "admin") {
-    ["navAdmin", "navUsers"].forEach((id) => {
+    ["navAdmin", "navUsers", "navHistory"].forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.style.display = "none";
     });

@@ -77,13 +77,18 @@ function highlightSelected() {
   });
 }
 
+// End time of a booking as a timestamp (used to drop meetings already held).
+const endTs = (b) => new Date(`${b.date}T${b.endTime}`).getTime();
+
 function renderBookings() {
+  const now = Date.now();
+  // "Upcoming" = meetings that haven't ended yet. Held ones move to History.
   const bookings = DB.getBookings()
-    .slice()
+    .filter((b) => isNaN(endTs(b)) || endTs(b) > now)
     .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
 
   if (!bookings.length) {
-    els.bookingList.innerHTML = `<tr><td colspan="6" class="empty">No bookings yet.</td></tr>`;
+    els.bookingList.innerHTML = `<tr><td colspan="6" class="empty">No upcoming meetings.</td></tr>`;
     return;
   }
   els.bookingList.innerHTML = bookings
@@ -95,20 +100,36 @@ function renderBookings() {
         <td>${esc(b.bookedBy)}</td>
         <td>${esc(b.date)}</td>
         <td>${esc(b.startTime)}–${esc(b.endTime)}</td>
-        <td>${canCancel(b) ? `<button class="icon-btn" data-del="${b.id}" title="Cancel booking">✕</button>` : ""}</td>
+        <td>${
+          canCancel(b)
+            ? `<button class="icon-btn" data-del="${b.id}" data-creator="${esc(b.createdBy || "")}"
+                 data-title="${esc(b.title)}" data-room="${esc(b.roomName)}"
+                 data-date="${esc(b.date)}" data-time="${esc(b.startTime)}–${esc(b.endTime)}"
+                 title="Cancel booking">✕</button>`
+            : ""
+        }</td>
       </tr>`
     )
     .join("");
 
   els.bookingList.querySelectorAll("[data-del]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (confirm("Cancel this booking?")) {
-        try {
-          await DB.deleteBooking(btn.dataset.del);
-          renderBookings();
-        } catch (err) {
-          showAlert("Could not cancel: " + err.message, false);
+      if (!confirm("Cancel this booking?")) return;
+      const me = typeof Auth !== "undefined" ? Auth.session() : null;
+      const creator = btn.dataset.creator;
+      try {
+        await DB.deleteBooking(btn.dataset.del);
+        // If an admin cancels someone else's meeting, notify the creator.
+        if (
+          me && me.role === "admin" && creator && creator !== me.username &&
+          typeof Notify !== "undefined" && Notify.enabled()
+        ) {
+          const msg = `Your meeting "${btn.dataset.title}" in ${btn.dataset.room} on ${btn.dataset.date} (${btn.dataset.time}) was cancelled by ${me.name || me.username}.`;
+          await Notify.create(creator, msg);
         }
+        renderBookings();
+      } catch (err) {
+        showAlert("Could not cancel: " + err.message, false);
       }
     });
   });
@@ -211,6 +232,82 @@ function renderAll(preserveSelection) {
   renderBookings();
 }
 
+/* ---- toasts + OS notifications ---- */
+function toast(message) {
+  let wrap = document.getElementById("toastWrap");
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.id = "toastWrap";
+    wrap.className = "toast-wrap";
+    document.body.appendChild(wrap);
+  }
+  const t = document.createElement("div");
+  t.className = "toast";
+  t.textContent = message;
+  t.addEventListener("click", () => t.remove());
+  wrap.appendChild(t);
+  setTimeout(() => { t.classList.add("hide"); setTimeout(() => t.remove(), 400); }, 9000);
+}
+
+// Show an OS notification if allowed; always also show an in-page toast.
+function showReminder(message) {
+  try {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("Meeting Room Booking", { body: message });
+    }
+  } catch (_) { /* ignore */ }
+  toast(message);
+}
+
+/* ---- meeting reminders at T-30 / T-15 / T-5 ---- */
+const REMINDER_LEADS = [30, 15, 5];
+const firedReminders = JSON.parse(localStorage.getItem("mrb_reminders") || "{}");
+const saveFired = () => localStorage.setItem("mrb_reminders", JSON.stringify(firedReminders));
+
+function myUpcoming(now) {
+  const me = typeof Auth !== "undefined" ? Auth.session() : null;
+  if (!me) return [];
+  return DB.getBookings().filter((b) => {
+    const mine =
+      (b.createdBy && b.createdBy === me.username) ||
+      (!b.createdBy && b.bookedBy === (me.name || me.username));
+    if (!mine) return false;
+    const start = new Date(`${b.date}T${b.startTime}`).getTime();
+    return start > now;
+  });
+}
+
+function checkReminders() {
+  const now = Date.now();
+  myUpcoming(now).forEach((b) => {
+    const start = new Date(`${b.date}T${b.startTime}`).getTime();
+    const mins = (start - now) / 60000;
+    REMINDER_LEADS.forEach((L) => {
+      const key = `${b.id}:${L}`;
+      // Fire once, in the minute the meeting crosses each threshold.
+      if (mins <= L && mins > L - 1 && !firedReminders[key]) {
+        firedReminders[key] = 1;
+        saveFired();
+        showReminder(`"${b.title}" in ${b.roomName} starts at ${b.startTime} — about ${L} min away.`);
+      }
+    });
+  });
+}
+
+/* ---- inbox: messages addressed to me (e.g. admin cancelled my meeting) ---- */
+async function checkNotifications() {
+  const me = typeof Auth !== "undefined" ? Auth.session() : null;
+  if (!me || typeof Notify === "undefined" || !Notify.enabled()) return;
+  try {
+    const list = await Notify.unreadFor(me.username);
+    if (!list.length) return;
+    list.forEach((n) => showReminder(n.message));
+    await Notify.markRead(list.map((n) => n.id));
+  } catch (e) {
+    console.warn("notification check failed:", e.message || e);
+  }
+}
+
 (async function init() {
   await DB.init();
   // Default the date picker to today.
@@ -219,6 +316,11 @@ function renderAll(preserveSelection) {
   const me = typeof Auth !== "undefined" ? Auth.session() : null;
   if (me && els.bookedBy) els.bookedBy.value = me.name || me.username;
   renderAll();
+
+  // Ask once for permission to show OS notifications (toast fallback otherwise).
+  if ("Notification" in window && Notification.permission === "default") {
+    try { Notification.requestPermission(); } catch (_) {}
+  }
 
   // Keep every browser in sync, three ways:
   if (DB.isShared()) {
@@ -238,4 +340,11 @@ function renderAll(preserveSelection) {
     setInterval(sync, 5000);                   // 2. poll every 5s (always works)
     DB.onChange(sync);                         // 3. instant push (if Realtime on)
   }
+
+  // Reminders + notification inbox.
+  checkReminders();
+  checkNotifications();
+  setInterval(checkReminders, 20000);          // every 20s while the tab is open
+  setInterval(checkNotifications, 20000);
+  window.addEventListener("focus", checkNotifications);
 })();

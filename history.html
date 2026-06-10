@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>History — Meeting Room Booking</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script src="js/theme.js"></script>
+  <!-- Require ADMIN before showing this page -->
+  <script>
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem("mrb_session"));
+        if (!s) location.replace("login.html");
+        else if (s.mustReset) location.replace("reset-password.html");
+        else if (s.role !== "admin") location.replace("index.html");
+      } catch (e) { location.replace("login.html"); }
+    })();
+  </script>
+</head>
+<body>
+  <header>
+    <h1><span class="logo">▦</span> Meeting Room Booking</h1>
+    <nav>
+      <a href="index.html">Book a Room</a>
+      <a href="admin.html" id="navAdmin">Admin</a>
+      <a href="users.html" id="navUsers">Users</a>
+      <a href="history.html" id="navHistory" class="active">History</a>
+      <span class="user-badge" id="userBadge"></span>
+      <button class="theme-toggle" type="button">☀️</button>
+      <button class="logout" id="logoutBtn" type="button">Logout</button>
+    </nav>
+  </header>
+
+  <main>
+    <h2 class="page-title">Meeting History</h2>
+    <p class="page-sub">Meetings that have already taken place — for reporting. Newest first.</p>
+
+    <section class="card">
+      <div class="btn-bar" style="margin-bottom:14px; align-items:center;">
+        <label for="fromDate" style="margin:0;">From</label>
+        <input id="fromDate" type="date" style="max-width:170px" />
+        <label for="toDate" style="margin:0;">To</label>
+        <input id="toDate" type="date" style="max-width:170px" />
+        <button class="ghost" id="clearFilter" type="button">Clear</button>
+        <button id="exportCsv" type="button">⬇ Download CSV</button>
+        <span class="user-badge" id="countBadge"></span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Time</th><th>Room</th><th>Meeting</th><th>Booked by</th></tr>
+        </thead>
+        <tbody id="historyList"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/nav.js"></script>
+</body>
+</html>
