@@ -23,6 +23,60 @@ function showAlert(msg, ok) {
   if (ok) setTimeout(() => (els.alert.className = "alert"), 4000);
 }
 
+/* ---- cancel-reason modal (replaces window.prompt) ---- */
+const cancelModal = {
+  overlay: document.getElementById("cancelModal"),
+  sub: document.getElementById("cancelModalSub"),
+  reason: document.getElementById("cancelReason"),
+  err: document.getElementById("cancelModalErr"),
+  confirm: document.getElementById("cancelModalConfirm"),
+  dismiss: document.getElementById("cancelModalDismiss"),
+};
+
+// Opens the modal; resolves with the trimmed reason, or null if dismissed.
+function askCancelReason(label) {
+  return new Promise((resolve) => {
+    const m = cancelModal;
+    m.reason.value = "";
+    m.err.className = "alert";
+    m.sub.textContent = label
+      ? `Why is "${label}" being cancelled?`
+      : "Tell everyone why this meeting is being cancelled.";
+    m.overlay.hidden = false;
+    setTimeout(() => m.reason.focus(), 0);
+
+    const close = (result) => {
+      m.overlay.hidden = true;
+      m.confirm.removeEventListener("click", onConfirm);
+      m.dismiss.removeEventListener("click", onDismiss);
+      m.overlay.removeEventListener("click", onOverlay);
+      document.removeEventListener("keydown", onKey);
+      resolve(result);
+    };
+    const onConfirm = () => {
+      const v = m.reason.value.trim();
+      if (!v) {
+        m.err.textContent = "Please enter a reason.";
+        m.err.className = "alert show err";
+        m.reason.focus();
+        return;
+      }
+      close(v);
+    };
+    const onDismiss = () => close(null);
+    const onOverlay = (e) => { if (e.target === m.overlay) close(null); };
+    const onKey = (e) => {
+      if (e.key === "Escape") close(null);
+      else if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) onConfirm();
+    };
+
+    m.confirm.addEventListener("click", onConfirm);
+    m.dismiss.addEventListener("click", onDismiss);
+    m.overlay.addEventListener("click", onOverlay);
+    document.addEventListener("keydown", onKey);
+  });
+}
+
 // Who may cancel a booking: admins cancel any; users cancel only their own.
 function canCancel(b) {
   const me = typeof Auth !== "undefined" ? Auth.session() : null;
@@ -114,9 +168,8 @@ function renderBookings() {
 
   els.bookingList.querySelectorAll("[data-del]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const reason = prompt("Reason for cancelling this meeting:");
-      if (reason === null) return;                 // user dismissed the prompt
-      if (!reason.trim()) return showAlert("A reason is required to cancel.", false);
+      const reason = await askCancelReason(btn.dataset.title);
+      if (reason === null) return;                 // dismissed the modal
 
       const me = typeof Auth !== "undefined" ? Auth.session() : null;
       const creator = btn.dataset.creator;

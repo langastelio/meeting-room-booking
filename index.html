@@ -92,6 +92,21 @@
     </div>
   </main>
 
+  <!-- Cancel-meeting modal -->
+  <div class="modal-overlay" id="cancelModal" hidden>
+    <div class="modal">
+      <h2>Cancel meeting</h2>
+      <p class="page-sub" id="cancelModalSub">Tell everyone why this meeting is being cancelled.</p>
+      <label for="cancelReason">Reason</label>
+      <textarea id="cancelReason" rows="3" placeholder="e.g. Rescheduled to next week"></textarea>
+      <div id="cancelModalErr" class="alert"></div>
+      <div class="btn-bar" style="justify-content:flex-end; margin-top:16px;">
+        <button class="ghost" id="cancelModalDismiss" type="button">Keep meeting</button>
+        <button class="danger" id="cancelModalConfirm" type="button">Cancel meeting</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Supabase client (shared database) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
