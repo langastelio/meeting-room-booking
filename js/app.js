@@ -82,9 +82,9 @@ const endTs = (b) => new Date(`${b.date}T${b.endTime}`).getTime();
 
 function renderBookings() {
   const now = Date.now();
-  // "Upcoming" = meetings that haven't ended yet. Held ones move to History.
+  // "Upcoming" = not cancelled and not ended. Cancelled/held ones move to History.
   const bookings = DB.getBookings()
-    .filter((b) => isNaN(endTs(b)) || endTs(b) > now)
+    .filter((b) => b.status !== "cancelled" && (isNaN(endTs(b)) || endTs(b) > now))
     .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
 
   if (!bookings.length) {
@@ -114,17 +114,23 @@ function renderBookings() {
 
   els.bookingList.querySelectorAll("[data-del]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!confirm("Cancel this booking?")) return;
+      const reason = prompt("Reason for cancelling this meeting:");
+      if (reason === null) return;                 // user dismissed the prompt
+      if (!reason.trim()) return showAlert("A reason is required to cancel.", false);
+
       const me = typeof Auth !== "undefined" ? Auth.session() : null;
       const creator = btn.dataset.creator;
       try {
-        await DB.deleteBooking(btn.dataset.del);
+        await DB.cancelBooking(btn.dataset.del, {
+          reason,
+          cancelledBy: me ? me.name || me.username : "",
+        });
         // If an admin cancels someone else's meeting, notify the creator.
         if (
           me && me.role === "admin" && creator && creator !== me.username &&
           typeof Notify !== "undefined" && Notify.enabled()
         ) {
-          const msg = `Your meeting "${btn.dataset.title}" in ${btn.dataset.room} on ${btn.dataset.date} (${btn.dataset.time}) was cancelled by ${me.name || me.username}.`;
+          const msg = `Your meeting "${btn.dataset.title}" in ${btn.dataset.room} on ${btn.dataset.date} (${btn.dataset.time}) was cancelled by ${me.name || me.username}. Reason: ${reason.trim()}`;
           await Notify.create(creator, msg);
         }
         renderBookings();
@@ -268,6 +274,7 @@ function myUpcoming(now) {
   const me = typeof Auth !== "undefined" ? Auth.session() : null;
   if (!me) return [];
   return DB.getBookings().filter((b) => {
+    if (b.status === "cancelled") return false;
     const mine =
       (b.createdBy && b.createdBy === me.username) ||
       (!b.createdBy && b.bookedBy === (me.name || me.username));

@@ -25,11 +25,19 @@ create table if not exists public.bookings (
   date        date not null,
   start_time  text not null,
   end_time    text not null,
+  status        text not null default 'booked', -- 'booked' | 'cancelled'
+  cancelled_by  text,               -- name of whoever cancelled it
+  cancel_reason text,
+  cancelled_at  timestamptz,
   created_at  timestamptz default now()
 );
 
--- Migrate older installs that created bookings before created_by existed.
-alter table public.bookings add column if not exists created_by text;
+-- Migrate older installs that created bookings before these columns existed.
+alter table public.bookings add column if not exists created_by    text;
+alter table public.bookings add column if not exists status        text not null default 'booked';
+alter table public.bookings add column if not exists cancelled_by  text;
+alter table public.bookings add column if not exists cancel_reason text;
+alter table public.bookings add column if not exists cancelled_at  timestamptz;
 
 create index if not exists bookings_date_idx on public.bookings (date);
 

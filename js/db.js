@@ -55,10 +55,12 @@ const DB = (() => {
   const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
 
   // A clash is the SAME room being double-booked at an overlapping time.
+  // Cancelled meetings don't count — the room is free.
   function conflictIn(bookings, { roomId, date, startTime, endTime, ignoreId }) {
     return (
       bookings.find(
         (b) =>
+          b.status !== "cancelled" &&
           Number(b.roomId) === Number(roomId) &&
           b.date === date &&
           b.id !== ignoreId &&
@@ -77,6 +79,7 @@ const DB = (() => {
   function roomFree(dayBookings, roomId, date, s, e, ignoreId) {
     return !dayBookings.some(
       (b) =>
+        b.status !== "cancelled" &&
         Number(b.roomId) === Number(roomId) &&
         b.date === date &&
         b.id !== ignoreId &&
@@ -117,6 +120,10 @@ const DB = (() => {
     date: r.date,
     startTime: r.start_time,
     endTime: r.end_time,
+    status: r.status || "booked",
+    cancelledBy: r.cancelled_by,
+    cancelReason: r.cancel_reason,
+    cancelledAt: r.cancelled_at,
     createdAt: r.created_at,
   });
   const toDbBooking = (b) => ({
@@ -440,6 +447,29 @@ const DB = (() => {
     await docSave(data);
   }
 
+  // Soft-cancel: keep the row (for reporting), record who cancelled it and why.
+  async function cancelBooking(id, { reason, cancelledBy }) {
+    const patch = {
+      status: "cancelled",
+      cancel_reason: (reason || "").trim() || null,
+      cancelled_by: cancelledBy || null,
+      cancelled_at: new Date().toISOString(),
+    };
+    if (mode === "supabase") {
+      const { error } = await sb.from("bookings").update(patch).eq("id", Number(id));
+      if (error) throw error;
+      await refresh();
+      return;
+    }
+    const data = await docLoad();
+    data.bookings = data.bookings.map((b) =>
+      Number(b.id) === Number(id)
+        ? { ...b, status: "cancelled", cancelReason: patch.cancel_reason, cancelledBy: patch.cancelled_by, cancelledAt: patch.cancelled_at }
+        : b
+    );
+    await docSave(data);
+  }
+
   return {
     init,
     refresh,
@@ -455,5 +485,6 @@ const DB = (() => {
     deleteRoom,
     addBooking,
     deleteBooking,
+    cancelBooking,
   };
 })();
