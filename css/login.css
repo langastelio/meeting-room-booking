@@ -1,4 +1,4 @@
-/* login.css — animated login screen (scoped to body.login-page) */
+/* login.css — animated, professional login screen (scoped to body.login-page) */
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
 
 body.login-page {
@@ -8,7 +8,7 @@ body.login-page {
   align-items: center;
   min-height: 100vh;
   margin: 0;
-  background: #1f293a;
+  background: radial-gradient(1200px 600px at 50% -10%, #21304a 0%, #1f293a 55%, #161e2c 100%);
   overflow: hidden;
 }
 
@@ -38,86 +38,151 @@ body.login-page {
   25% { background: #2c4766; }
 }
 
-/* The form floats above the ring */
+/* Glass card floating above the ring */
 .login-page .login-box {
   position: absolute;
-  width: 400px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   z-index: 10;
+  width: 380px;
+  max-width: 92vw;
+  padding: 36px 30px 30px;
+  background: rgba(23, 33, 51, 0.92);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 18px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
 }
-.login-page .login-box form { width: 100%; padding: 0 50px; }
+.login-page .login-box form { width: 100%; }
 
 .login-page .brand {
   text-align: center;
   color: #9fb4cc;
-  font-size: .8em;
-  letter-spacing: .5px;
-  margin-bottom: 2px;
+  font-size: .8rem;
+  letter-spacing: .4px;
+  margin: 0 0 2px;
 }
 .login-page .brand .logo { color: #0ef; }
-.login-page h2 { font-size: 2em; color: #0ef; text-align: center; }
-.login-page .auth-sub {
-  color: #cdd7e6;
+.login-page h2 {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: #eaf2ff;
   text-align: center;
-  font-size: .8em;
-  margin: 6px 0 0;
+  margin: 2px 0 0;
+}
+.login-page .auth-sub {
+  color: #8aa0bf;
+  text-align: center;
+  font-size: .82rem;
+  margin: 6px 0 24px;
 }
 
-/* Floating-label inputs (placeholder-shown trick so it works even when optional) */
-.login-page .input-box { position: relative; margin: 25px 0; }
+/* ---- Professional input fields with icon + floating label ---- */
+.login-page .input-box { position: relative; margin-bottom: 18px; }
+
+.login-page .input-box .ic {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: #7d93b2;
+  pointer-events: none;
+  transition: color .2s ease;
+}
+.login-page .input-box:focus-within .ic { color: #0ef; }
+
 .login-page .input-box input {
   width: 100%;
-  height: 50px;
-  background: transparent;
-  border: 2px solid #2c4766;
+  height: 52px;
+  padding: 0 16px 0 44px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: #eaf2ff;
+  font-size: .95rem;
   outline: none;
-  border-radius: 40px;
-  font-size: 1em;
-  color: #fff;
-  padding: 0 20px;
-  transition: .5s ease;
+  transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
 }
-.login-page .input-box input:focus,
-.login-page .input-box input:not(:placeholder-shown) { border-color: #0ef; outline: none; }
+.login-page .input-box.has-toggle input { padding-right: 46px; }
+.login-page .input-box input::placeholder { color: transparent; }
+.login-page .input-box input:hover { border-color: rgba(255, 255, 255, 0.28); }
+.login-page .input-box input:focus {
+  border-color: #0ef;
+  background: rgba(0, 238, 255, 0.05);
+  box-shadow: 0 0 0 4px rgba(0, 238, 255, 0.12);
+}
 
 .login-page .input-box label {
   position: absolute;
+  left: 42px;
   top: 50%;
-  left: 20px;
   transform: translateY(-50%);
-  font-size: 1em;
-  color: #fff;
+  color: #8aa0bf;
+  font-size: .95rem;
   pointer-events: none;
-  transition: .5s ease;
+  transition: all .2s ease;
 }
 .login-page .input-box input:focus ~ label,
 .login-page .input-box input:not(:placeholder-shown) ~ label {
-  top: 1px;
-  font-size: .8em;
-  background: #1f293a;
-  padding: 0 6px;
+  top: 0;
+  left: 14px;
+  transform: translateY(-50%) scale(.82);
+  background: #172133;
+  padding: 0 7px;
   color: #0ef;
+  letter-spacing: .3px;
 }
 
+/* Show / hide password */
+.login-page .toggle-pass {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: #7d93b2;
+  cursor: pointer;
+  transition: color .2s ease, background .2s ease;
+}
+.login-page .toggle-pass:hover { color: #0ef; background: rgba(255, 255, 255, 0.06); }
+.login-page .toggle-pass svg { width: 18px; height: 18px; }
+.login-page .toggle-pass .eye-off { display: none; }
+.login-page .toggle-pass.on .eye { display: none; }
+.login-page .toggle-pass.on .eye-off { display: inline; }
+
+/* Submit button */
 .login-page .btn {
   width: 100%;
-  height: 45px;
-  background: #0ef;
+  height: 50px;
+  margin-top: 4px;
   border: none;
   outline: none;
-  border-radius: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #00eaff, #2bb3ff);
+  color: #06222b;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: .3px;
   cursor: pointer;
-  font-size: 1em;
-  color: #1f293a;
-  font-weight: 600;
-  transition: .3s ease;
+  transition: filter .2s ease, box-shadow .2s ease, transform .05s ease;
 }
-.login-page .btn:hover { box-shadow: 0 0 14px #0ef; }
-.login-page .btn:disabled { opacity: .7; cursor: default; box-shadow: none; }
+.login-page .btn:hover { box-shadow: 0 8px 24px rgba(0, 238, 255, 0.35); filter: brightness(1.05); }
+.login-page .btn:active { transform: translateY(1px); }
+.login-page .btn:disabled { opacity: .7; cursor: default; box-shadow: none; filter: none; }
 
 .login-page #authAlert { margin-top: 16px; }
 
-/* Keep the ring from overflowing on small screens */
 @media (max-width: 480px) {
-  .login-page .login-box { width: 92vw; }
-  .login-page .login-box form { padding: 0 16px; }
+  .login-page .login-box { padding: 30px 20px 24px; }
 }

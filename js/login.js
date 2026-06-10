@@ -49,6 +49,18 @@ L.form.addEventListener("submit", async (e) => {
   }
 });
 
+// Show / hide password
+const togglePass = document.getElementById("togglePass");
+if (togglePass) {
+  togglePass.addEventListener("click", () => {
+    const show = L.password.type === "password";
+    L.password.type = show ? "text" : "password";
+    togglePass.classList.toggle("on", show);
+    togglePass.setAttribute("aria-label", show ? "Hide password" : "Show password");
+    L.password.focus();
+  });
+}
+
 (async function init() {
   if (!Auth.hasBackend()) {
     showAlert("Database not configured (check js/config.js).", false);
