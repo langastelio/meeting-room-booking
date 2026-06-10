@@ -99,6 +99,11 @@ const Auth = (() => {
     if (!sb) return { ok: false, error: "Database not configured." };
     username = (username || "").trim().toLowerCase();
     if (!username || !password) return { ok: false, error: "Username and password are required." };
+    // Whitelist allowed characters (defence-in-depth; the data layer is already
+    // parameterised, so this is belt-and-suspenders against injection/odd input).
+    if (!/^[a-z0-9._@-]{3,50}$/.test(username)) {
+      return { ok: false, error: "Username may only contain letters, numbers, and . _ - @ (3–50 characters)." };
+    }
     const ph = await hash(username, password);
     const { data, error } = await sb
       .from("app_users")

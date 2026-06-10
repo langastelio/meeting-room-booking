@@ -61,6 +61,12 @@ if (togglePass) {
   });
 }
 
+// Notice if the previous session ended due to inactivity.
+if (localStorage.getItem("mrb_logout_reason") === "idle") {
+  localStorage.removeItem("mrb_logout_reason");
+  showAlert("You were signed out after 15 minutes of inactivity.", false);
+}
+
 (async function init() {
   if (!Auth.hasBackend()) {
     showAlert("Database not configured (check js/config.js).", false);
