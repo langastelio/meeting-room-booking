@@ -64,7 +64,7 @@ header {
 }
 header h1 { font-size: 1.25rem; margin: 0; }
 header h1 .logo { color: var(--primary); }
-nav { display: flex; gap: 8px; align-items: center; }
+nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 nav a {
   color: var(--muted);
   text-decoration: none;
@@ -233,3 +233,47 @@ td .btn-bar button { padding: 5px 10px; font-size: 0.8rem; }
 .modal textarea { width: 100%; resize: vertical; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes modalIn { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+/* Tables that don't fit scroll horizontally inside their card
+   (only cards that actually contain a table). */
+.card:has(table) { overflow-x: auto; }
+.card table { min-width: 600px; }
+
+/* Room cards never overflow on very small screens */
+.rooms { grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+
+/* Tablets / small laptops */
+@media (max-width: 800px) {
+  main { padding: 20px 16px; }
+}
+
+/* Phones */
+@media (max-width: 640px) {
+  header { padding: 12px 16px; }
+  header h1 { font-size: 1.05rem; }
+  nav { gap: 6px; }
+  nav a, nav button.logout, .theme-toggle { font-size: .8rem; padding: 6px 10px; }
+  .user-badge { font-size: .72rem; }
+
+  main { padding: 16px 12px; }
+  .page-sub { margin-bottom: 16px; }
+  .grid { gap: 16px; }
+  .card { padding: 16px; }
+
+  th, td { padding: 8px; font-size: .82rem; }
+  .card table { min-width: 560px; }
+
+  /* Stack the two time inputs on the booking form */
+  .row { flex-direction: column; gap: 0; }
+}
+
+/* Full-width overlays on small screens */
+@media (max-width: 480px) {
+  .toast-wrap { left: 12px; right: 12px; max-width: none; }
+  .modal { max-width: none; }
+  nav a, nav button.logout { padding: 6px 9px; }
+}
