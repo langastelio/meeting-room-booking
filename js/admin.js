@@ -10,10 +10,47 @@ const a = {
   list: document.getElementById("adminRoomList"),
 };
 
+let editingRoomId = null; // id of the room being edited inline
+
 function showAlert(msg, ok) {
   a.alert.textContent = msg;
   a.alert.className = `alert show ${ok ? "ok" : "err"}`;
   setTimeout(() => (a.alert.className = "alert"), 4000);
+}
+
+const esc = (s) =>
+  String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function roomRow(r) {
+  if (editingRoomId === r.id) {
+    return `
+      <tr class="inline-edit" data-row="${r.id}">
+        <td><input type="text" data-edit-name value="${esc(r.name)}" /></td>
+        <td><input type="text" data-edit-location value="${esc(r.location)}" /></td>
+        <td><input type="number" min="1" data-edit-capacity value="${esc(r.capacity)}" style="max-width:80px" /></td>
+        <td><input type="text" data-edit-facilities value="${esc(r.facilities)}" /></td>
+        <td><span class="pill ${r.active ? "on" : "off"}">${r.active ? "Active" : "Inactive"}</span></td>
+        <td><div class="btn-bar">
+          <button data-save="${r.id}">Save</button>
+          <button class="ghost" data-cancel="1">Cancel</button>
+        </div></td>
+      </tr>`;
+  }
+  return `
+    <tr data-row="${r.id}">
+      <td>${esc(r.name)}</td>
+      <td>${esc(r.location)}</td>
+      <td>${esc(r.capacity)}</td>
+      <td>${esc(r.facilities) || "—"}</td>
+      <td><span class="pill ${r.active ? "on" : "off"}">${r.active ? "Active" : "Inactive"}</span></td>
+      <td><div class="btn-bar">
+        <button class="ghost" data-edit="${r.id}">Edit</button>
+        <button class="ghost" data-toggle="${r.id}" data-to="${r.active ? "false" : "true"}">
+          ${r.active ? "Deactivate" : "Activate"}
+        </button>
+        <button class="icon-btn" data-del="${r.id}" title="Delete room">✕</button>
+      </div></td>
+    </tr>`;
 }
 
 function renderRooms() {
@@ -22,28 +59,57 @@ function renderRooms() {
     a.list.innerHTML = `<tr><td colspan="6" class="empty">No rooms yet. Add your first one on the left.</td></tr>`;
     return;
   }
-  a.list.innerHTML = rooms
-    .map(
-      (r) => `
-      <tr>
-        <td>${r.name}</td>
-        <td>${r.location}</td>
-        <td>${r.capacity}</td>
-        <td>${r.facilities || "—"}</td>
-        <td><span class="pill ${r.active ? "on" : "off"}">${r.active ? "Active" : "Inactive"}</span></td>
-        <td><button class="icon-btn" data-del="${r.id}" title="Delete room">✕</button></td>
-      </tr>`
-    )
-    .join("");
+  a.list.innerHTML = rooms.map(roomRow).join("");
 
-  a.list.querySelectorAll("[data-del]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      if (confirm("Delete this room? Existing bookings are kept.")) {
-        await DB.deleteRoom(btn.dataset.del);
+  // Edit / Cancel
+  a.list.querySelectorAll("[data-edit]").forEach((b) =>
+    b.addEventListener("click", () => { editingRoomId = Number(b.dataset.edit); renderRooms(); })
+  );
+  a.list.querySelectorAll("[data-cancel]").forEach((b) =>
+    b.addEventListener("click", () => { editingRoomId = null; renderRooms(); })
+  );
+
+  // Save inline edit
+  a.list.querySelectorAll("[data-save]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      const row = b.closest("tr");
+      try {
+        await DB.updateRoom(b.dataset.save, {
+          name: row.querySelector("[data-edit-name]").value,
+          location: row.querySelector("[data-edit-location]").value,
+          capacity: row.querySelector("[data-edit-capacity]").value,
+          facilities: row.querySelector("[data-edit-facilities]").value,
+        });
+        editingRoomId = null;
         renderRooms();
+        showAlert("Room updated.", true);
+      } catch (err) {
+        showAlert("Update failed: " + err.message, false);
       }
-    });
-  });
+    })
+  );
+
+  // Toggle Active / Inactive
+  a.list.querySelectorAll("[data-toggle]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      try {
+        await DB.updateRoom(b.dataset.toggle, { active: b.dataset.to === "true" });
+        renderRooms();
+      } catch (err) {
+        showAlert("Update failed: " + err.message, false);
+      }
+    })
+  );
+
+  // Delete
+  a.list.querySelectorAll("[data-del]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      if (confirm("Delete this room? Existing bookings are kept.")) {
+        try { await DB.deleteRoom(b.dataset.del); renderRooms(); }
+        catch (err) { showAlert("Delete failed: " + err.message, false); }
+      }
+    })
+  );
 }
 
 a.form.addEventListener("submit", async (e) => {
@@ -80,7 +146,7 @@ a.form.addEventListener("submit", async (e) => {
   if (DB.isShared()) {
     let syncing = false;
     const sync = async () => {
-      if (syncing) return;
+      if (syncing || editingRoomId !== null) return; // don't interrupt an edit
       syncing = true;
       try {
         await DB.refresh();

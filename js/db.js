@@ -294,6 +294,26 @@ const DB = (() => {
     await docSave(data);
   }
 
+  // Edit a room. Pass only the fields you want to change (e.g. { active: false }).
+  async function updateRoom(id, fields) {
+    const patch = {};
+    if (fields.name !== undefined) patch.name = String(fields.name).trim();
+    if (fields.location !== undefined) patch.location = String(fields.location).trim();
+    if (fields.capacity !== undefined) patch.capacity = Number(fields.capacity) || 0;
+    if (fields.facilities !== undefined) patch.facilities = String(fields.facilities).trim();
+    if (fields.active !== undefined) patch.active = !!fields.active;
+
+    if (mode === "supabase") {
+      const { error } = await sb.from("rooms").update(patch).eq("id", Number(id));
+      if (error) throw error;
+      await refresh();
+      return;
+    }
+    const data = await docLoad();
+    data.rooms = data.rooms.map((r) => (r.id === Number(id) ? { ...r, ...patch } : r));
+    await docSave(data);
+  }
+
   // ---- Bookings (with cross-user conflict check) ---------------------------
   async function addBooking({ roomId, title, bookedBy, date, startTime, endTime }) {
     if (endTime <= startTime) {
@@ -376,6 +396,7 @@ const DB = (() => {
     getBookings,
     findConflict,
     addRoom,
+    updateRoom,
     deleteRoom,
     addBooking,
     deleteBooking,
