@@ -298,3 +298,24 @@ td .btn-bar button { padding: 5px 10px; font-size: 0.8rem; }
 .loader-bar span { display: block; height: 100%; width: 40%; border-radius: 999px; background: var(--primary); animation: mrbProgress 5s ease-in-out forwards; }
 @keyframes mrbSpin { to { transform: rotate(360deg); } }
 @keyframes mrbProgress { 0% { width: 0; } 100% { width: 100%; } }
+
+/* ---- First-login guided tour ---- */
+.tour-block { position: fixed; inset: 0; z-index: 90000; background: transparent; }
+.tour-spotlight {
+  position: fixed; z-index: 90001; border-radius: 10px;
+  box-shadow: 0 0 0 9999px rgba(2, 6, 23, 0.7);
+  pointer-events: none; transition: top .25s ease, left .25s ease, width .25s ease, height .25s ease;
+}
+.tour-pop {
+  position: fixed; z-index: 90002; width: 300px; max-width: calc(100vw - 24px);
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.55); padding: 16px;
+}
+.tour-pop.center { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.tour-pop h3 { margin: 0 0 6px; font-size: 1.05rem; color: var(--primary); }
+.tour-pop p { margin: 0 0 14px; font-size: .9rem; color: var(--text); }
+.tour-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tour-step { font-size: .76rem; color: var(--muted); }
+.tour-actions { display: flex; gap: 8px; }
+.tour-actions button { padding: 7px 12px; font-size: .82rem; }
