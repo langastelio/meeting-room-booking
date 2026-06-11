@@ -4,6 +4,7 @@ const U = {
   form: document.getElementById("userForm"),
   name: document.getElementById("newName"),
   username: document.getElementById("newUsername"),
+  email: document.getElementById("newEmail"),
   password: document.getElementById("newPassword"),
   role: document.getElementById("newRole"),
   alert: document.getElementById("userAlert"),
@@ -32,6 +33,7 @@ function rowHtml(u, me) {
       <tr class="inline-edit" data-row="${u.id}">
         <td><input type="text" data-edit-name value="${esc(u.name || "")}" placeholder="Full name" /></td>
         <td>${esc(u.username)}</td>
+        <td><input type="email" data-edit-email value="${esc(u.email || "")}" placeholder="name@company.com" /></td>
         <td>
           <select data-edit-role ${self ? "disabled title='You cannot change your own role'" : ""}>
             <option value="user" ${u.role === "user" ? "selected" : ""}>user</option>
@@ -57,6 +59,7 @@ function rowHtml(u, me) {
     <tr data-row="${u.id}">
       <td>${esc(u.name || "—")}${self ? " <span class='tag'>you</span>" : ""}</td>
       <td>${esc(u.username)}</td>
+      <td>${esc(u.email || "—")}</td>
       <td>${roleBadge}${pending}</td>
       <td>${statusBadge}</td>
       <td><div class="btn-bar">${actions.join("")}</div></td>
@@ -68,7 +71,7 @@ async function renderUsers() {
   try {
     users = await Auth.listUsers();
   } catch (err) {
-    U.list.innerHTML = `<tr><td colspan="5" class="empty">Could not load users: ${esc(err.message)}</td></tr>`;
+    U.list.innerHTML = `<tr><td colspan="6" class="empty">Could not load users: ${esc(err.message)}</td></tr>`;
     return;
   }
   const me = Auth.session();
@@ -87,8 +90,9 @@ async function renderUsers() {
     b.addEventListener("click", async () => {
       const row = b.closest("tr");
       const name = row.querySelector("[data-edit-name]").value;
+      const email = row.querySelector("[data-edit-email]").value;
       const roleSel = row.querySelector("[data-edit-role]");
-      const patch = { name };
+      const patch = { name, email };
       if (roleSel && !roleSel.disabled) patch.role = roleSel.value;
       const res = await Auth.updateUser(b.dataset.save, patch);
       if (!res.ok) return showAlert("Update failed: " + res.error, false);
@@ -134,15 +138,31 @@ U.form.addEventListener("submit", async (e) => {
   btn.disabled = true;
   btn.textContent = "Creating…";
   try {
+    const tempPassword = U.password.value;
+    const email = U.email ? U.email.value.trim() : "";
     const res = await Auth.createUser({
       name: U.name.value,
       username: U.username.value,
-      password: U.password.value,
+      email,
+      password: tempPassword,
       role: U.role.value,
       mustReset: true, // they must change the temp password on first login
     });
     if (!res.ok) return showAlert(res.error, false);
-    showAlert(`Created "${res.user.name || res.user.username}" (${res.user.role}). They'll reset the password on first login.`, true);
+
+    // Welcome email with login details (queued; sent by the server function).
+    if (email && typeof Mailer !== "undefined" && Mailer.ready()) {
+      Mailer.enqueue(email, res.user.name || res.user.username,
+        "Your Meeting Room Booking account",
+        `<p>Hi ${res.user.name || res.user.username},</p>` +
+        `<p>An account has been created for you on the Meeting Room Booking system.</p>` +
+        `<p><b>Username:</b> ${res.user.username}<br/><b>Temporary password:</b> ${tempPassword}</p>` +
+        `<p>Sign in here: <a href="${Mailer.loginUrl()}">${Mailer.loginUrl()}</a><br/>` +
+        `You'll be asked to set your own password on first login.</p>`);
+    }
+
+    showAlert(`Created "${res.user.name || res.user.username}" (${res.user.role}).` +
+      (email ? " A welcome email has been queued." : " They'll reset the password on first login."), true);
     U.form.reset();
     renderUsers();
   } finally {

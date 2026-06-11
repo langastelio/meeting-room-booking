@@ -62,11 +62,26 @@ const Auth = (() => {
   async function listUsers() {
     const { data, error } = await sb
       .from("app_users")
-      .select("id, username, name, role, active, must_reset, created_at")
+      .select("id, username, name, email, role, active, must_reset, created_at")
       .order("id", { ascending: true });
     if (error) throw error;
     return data || [];
   }
+
+  // Look up a user's email + display name by username (for cancellation emails).
+  async function userContact(username) {
+    if (!sb || !username) return null;
+    const { data, error } = await sb
+      .from("app_users")
+      .select("username, name, email")
+      .eq("username", String(username).toLowerCase())
+      .limit(1);
+    if (error || !data || !data.length) return null;
+    return data[0];
+  }
+
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const validEmail = (e) => EMAIL_RE.test(String(e || "").trim());
 
   // Display name helper: prefer the person's name, fall back to username.
   const displayName = (u) => (u && (u.name || u.username)) || "";
@@ -78,7 +93,7 @@ const Auth = (() => {
     const ph = await hash(username, password);
     const { data, error } = await sb
       .from("app_users")
-      .select("id, username, name, role, active, must_reset")
+      .select("id, username, name, email, role, active, must_reset")
       .eq("username", username)
       .eq("password_hash", ph)
       .limit(1);
@@ -90,13 +105,14 @@ const Auth = (() => {
       id: u.id,
       username: u.username,
       name: u.name || u.username,
+      email: u.email || "",
       role: u.role,
       mustReset: !!u.must_reset,
     });
     return { ok: true, user: u };
   }
 
-  async function createUser({ username, password, name, role, mustReset = true }) {
+  async function createUser({ username, password, name, email, role, mustReset = true }) {
     if (!sb) return { ok: false, error: "Database not configured." };
     username = (username || "").trim().toLowerCase();
     if (!username || !password) return { ok: false, error: "Username and password are required." };
@@ -105,18 +121,21 @@ const Auth = (() => {
     if (!/^[a-z0-9._@-]{3,50}$/.test(username)) {
       return { ok: false, error: "Username may only contain letters, numbers, and . _ - @ (3–50 characters)." };
     }
+    email = (email || "").trim();
+    if (email && !validEmail(email)) return { ok: false, error: "Enter a valid email address." };
     const ph = await hash(username, password);
     const { data, error } = await sb
       .from("app_users")
       .insert({
         username,
         name: (name || "").trim() || null,
+        email: email || null,
         password_hash: ph,
         role: role === "admin" ? "admin" : "user",
         active: true,
         must_reset: !!mustReset,
       })
-      .select("id, username, name, role, active, must_reset")
+      .select("id, username, name, email, role, active, must_reset")
       .single();
     if (error) {
       if (error.code === "23505") return { ok: false, error: "That username already exists." };
@@ -161,10 +180,15 @@ const Auth = (() => {
   }
 
   // ---- admin: manage other users ------------------------------------------
-  async function updateUser(id, { name, role }) {
+  async function updateUser(id, { name, email, role }) {
     const patch = {};
     if (name !== undefined) patch.name = (name || "").trim() || null;
     if (role !== undefined) patch.role = role === "admin" ? "admin" : "user";
+    if (email !== undefined) {
+      const e = (email || "").trim();
+      if (e && !validEmail(e)) return { ok: false, error: "Enter a valid email address." };
+      patch.email = e || null;
+    }
     const { error } = await sb.from("app_users").update(patch).eq("id", Number(id));
     if (error) return { ok: false, error: error.message };
     return { ok: true };
@@ -199,6 +223,7 @@ const Auth = (() => {
     logout,
     userCount,
     listUsers,
+    userContact,
     login,
     createUser,
     createFirstAdmin,

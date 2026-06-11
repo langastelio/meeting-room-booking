@@ -48,6 +48,9 @@
           <label for="newUsername">Username</label>
           <input id="newUsername" type="text" placeholder="e.g. slanga" autocomplete="off" required />
 
+          <label for="newEmail">Email <span class="muted-note" style="display:inline">(for notifications)</span></label>
+          <input id="newEmail" type="email" placeholder="e.g. stelio@company.com" autocomplete="off" />
+
           <label for="newPassword">Temporary password</label>
           <input id="newPassword" type="text" placeholder="they'll reset it on first login" autocomplete="new-password" required />
 
@@ -67,7 +70,7 @@
         <h2>Existing Users</h2>
         <table>
           <thead>
-            <tr><th>Name</th><th>Username</th><th>Role</th><th>Status</th><th>Actions</th></tr>
+            <tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr>
           </thead>
           <tbody id="userList"></tbody>
         </table>
@@ -78,6 +81,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/mailer.js"></script>
   <script src="js/users.js"></script>
   <script src="js/nav.js"></script>
   <script src="js/idle.js"></script>
