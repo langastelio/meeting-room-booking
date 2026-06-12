@@ -178,21 +178,13 @@ function renderBookings() {
           reason,
           cancelledBy: me ? me.name || me.username : "",
         });
-        // If an admin cancels someone else's meeting, notify the creator.
-        if (me && me.role === "admin" && creator && creator !== me.username) {
+        // If an admin cancels someone else's meeting, notify the creator (in-app).
+        if (
+          me && me.role === "admin" && creator && creator !== me.username &&
+          typeof Notify !== "undefined" && Notify.enabled()
+        ) {
           const msg = `Your meeting "${btn.dataset.title}" in ${btn.dataset.room} on ${btn.dataset.date} (${btn.dataset.time}) was cancelled by ${me.name || me.username}. Reason: ${reason.trim()}`;
-          if (typeof Notify !== "undefined" && Notify.enabled()) await Notify.create(creator, msg);
-          // Email the meeting owner too.
-          if (typeof Mailer !== "undefined" && Mailer.ready()) {
-            const c = await Auth.userContact(creator);
-            if (c && c.email) {
-              Mailer.enqueue(c.email, c.name,
-                `Meeting cancelled: ${btn.dataset.title}`,
-                `<p>Hi ${c.name || ""},</p><p>Your meeting <b>${btn.dataset.title}</b> in <b>${btn.dataset.room}</b> ` +
-                `on <b>${btn.dataset.date}</b> (${btn.dataset.time}) was cancelled by <b>${me.name || me.username}</b>.</p>` +
-                `<p><b>Reason:</b> ${reason.trim()}</p>`);
-            }
-          }
+          await Notify.create(creator, msg);
         }
         renderBookings();
       } catch (err) {
@@ -275,14 +267,6 @@ els.form.addEventListener("submit", async (e) => {
     }
 
     showAlert("Room booked.", true);
-    // Email the booker a confirmation.
-    if (me && me.email && typeof Mailer !== "undefined" && Mailer.ready() && result.booking) {
-      var bk = result.booking;
-      Mailer.enqueue(me.email, me.name,
-        `Booking confirmed: ${bk.title}`,
-        `<p>Hi ${me.name || ""},</p><p>Your meeting <b>${bk.title}</b> is booked in <b>${bk.roomName}</b> ` +
-        `on <b>${bk.date}</b> from <b>${bk.startTime}</b> to <b>${bk.endTime}</b>.</p>`);
-    }
     clearSuggestions();
     els.title.value = "";
     renderRoomOptions();

@@ -138,31 +138,17 @@ U.form.addEventListener("submit", async (e) => {
   btn.disabled = true;
   btn.textContent = "Creating…";
   try {
-    const tempPassword = U.password.value;
     const email = U.email ? U.email.value.trim() : "";
     const res = await Auth.createUser({
       name: U.name.value,
       username: U.username.value,
       email,
-      password: tempPassword,
+      password: U.password.value,
       role: U.role.value,
       mustReset: true, // they must change the temp password on first login
     });
     if (!res.ok) return showAlert(res.error, false);
-
-    // Welcome email with login details (queued; sent by the server function).
-    if (email && typeof Mailer !== "undefined" && Mailer.ready()) {
-      Mailer.enqueue(email, res.user.name || res.user.username,
-        "Your Meeting Room Booking account",
-        `<p>Hi ${res.user.name || res.user.username},</p>` +
-        `<p>An account has been created for you on the Meeting Room Booking system.</p>` +
-        `<p><b>Username:</b> ${res.user.username}<br/><b>Temporary password:</b> ${tempPassword}</p>` +
-        `<p>Sign in here: <a href="${Mailer.loginUrl()}">${Mailer.loginUrl()}</a><br/>` +
-        `You'll be asked to set your own password on first login.</p>`);
-    }
-
-    showAlert(`Created "${res.user.name || res.user.username}" (${res.user.role}).` +
-      (email ? " A welcome email has been queued." : " They'll reset the password on first login."), true);
+    showAlert(`Created "${res.user.name || res.user.username}" (${res.user.role}). They'll reset the password on first login.`, true);
     U.form.reset();
     renderUsers();
   } finally {

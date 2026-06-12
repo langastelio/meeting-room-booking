@@ -72,6 +72,7 @@ create table if not exists public.app_users (
   id            bigint generated always as identity primary key,
   username      text unique not null,
   name          text,                         -- person's full name (shown in the app)
+  email         text,                         -- contact email (used by notifications in MVP 2)
   password_hash text not null,
   role          text not null default 'user' check (role in ('admin','user')),
   active        boolean not null default true,
@@ -81,6 +82,7 @@ create table if not exists public.app_users (
 
 -- Migrate older installs that created app_users before these columns existed.
 alter table public.app_users add column if not exists name text;
+alter table public.app_users add column if not exists email text;
 alter table public.app_users add column if not exists must_reset boolean not null default false;
 
 alter table public.app_users enable row level security;

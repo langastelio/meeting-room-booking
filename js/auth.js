@@ -68,18 +68,6 @@ const Auth = (() => {
     return data || [];
   }
 
-  // Look up a user's email + display name by username (for cancellation emails).
-  async function userContact(username) {
-    if (!sb || !username) return null;
-    const { data, error } = await sb
-      .from("app_users")
-      .select("username, name, email")
-      .eq("username", String(username).toLowerCase())
-      .limit(1);
-    if (error || !data || !data.length) return null;
-    return data[0];
-  }
-
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const validEmail = (e) => EMAIL_RE.test(String(e || "").trim());
 
@@ -223,7 +211,6 @@ const Auth = (() => {
     logout,
     userCount,
     listUsers,
-    userContact,
     login,
     createUser,
     createFirstAdmin,
