@@ -9,6 +9,7 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <!-- Apply saved theme before paint to avoid a flash -->
   <script src="js/theme.js"></script>
+  <script src="js/i18n.js"></script>
   <!-- Require ADMIN before showing this page -->
   <script>
     (function () {
@@ -23,50 +24,51 @@
 </head>
 <body>
   <header>
-    <h1><span class="logo">▦</span> Meeting Room Booking</h1>
+    <h1><span class="logo">▦</span> <span data-i18n="brand">Meeting Room Booking</span></h1>
     <nav>
-      <a href="index.html">Book a Room</a>
-      <a href="admin.html" id="navAdmin" class="active">Admin</a>
-      <a href="users.html" id="navUsers">Users</a>
-      <a href="history.html" id="navHistory">History</a>
+      <a href="index.html" data-i18n="nav.book">Book a Room</a>
+      <a href="admin.html" id="navAdmin" class="active" data-i18n="nav.admin">Admin</a>
+      <a href="users.html" id="navUsers" data-i18n="nav.users">Users</a>
+      <a href="history.html" id="navHistory" data-i18n="nav.history">History</a>
       <span class="user-badge" id="userBadge"></span>
+      <button class="lang-toggle" type="button">PT</button>
       <button class="theme-toggle" type="button">☀️</button>
-      <button class="logout" id="logoutBtn" type="button">Logout</button>
+      <button class="logout" id="logoutBtn" type="button" data-i18n="btn.logout">Logout</button>
     </nav>
   </header>
 
   <main>
-    <h2 class="page-title">Admin — Manage Rooms</h2>
-    <p class="page-sub">Add and remove meeting rooms. Changes save straight to the database.</p>
+    <h2 class="page-title" data-i18n="title.admin">Manage Rooms</h2>
+    <p class="page-sub" data-i18n="sub.admin">Add and remove meeting rooms. Changes save straight to the database.</p>
 
     <div class="grid two">
       <!-- Add room form -->
       <section class="card">
-        <h2>Add a Meeting Room</h2>
+        <h2 data-i18n="card.addRoom">Add a Meeting Room</h2>
         <form id="roomForm">
-          <label for="name">Room Name</label>
+          <label for="name" data-i18n="label.name">Room Name</label>
           <input id="name" type="text" placeholder="e.g. Boardroom B" required />
 
-          <label for="location">Location</label>
+          <label for="location" data-i18n="label.location">Location</label>
           <input id="location" type="text" placeholder="e.g. 2nd Floor - West Wing" required />
 
-          <label for="capacity">Capacity (seats)</label>
+          <label for="capacity" data-i18n="label.capacity">Capacity (seats)</label>
           <input id="capacity" type="number" min="1" placeholder="e.g. 8" required />
 
-          <label for="facilities">Facilities (comma separated)</label>
-          <input id="facilities" type="text" placeholder="e.g. Projector, Whiteboard, TV" />
+          <label for="facilities" data-i18n="label.facilities">Facilities (comma separated)</label>
+          <input id="facilities" type="text" data-i18n-ph="ph.facilities" placeholder="e.g. Projector, Whiteboard, TV" />
 
-          <button type="submit" class="block">Add Room</button>
+          <button type="submit" class="block" data-i18n="btn.addRoom">Add Room</button>
           <div id="roomAlert" class="alert"></div>
         </form>
       </section>
 
       <!-- Room list -->
       <section class="card">
-        <h2>Current Rooms</h2>
+        <h2 data-i18n="card.rooms">Current Rooms</h2>
         <table>
           <thead>
-            <tr><th>Name</th><th>Location</th><th>Seats</th><th>Facilities</th><th>Status</th><th></th></tr>
+            <tr><th data-i18n="th.name">Name</th><th data-i18n="th.location">Location</th><th data-i18n="th.seats">Seats</th><th data-i18n="th.facilities">Facilities</th><th data-i18n="th.status">Status</th><th></th></tr>
           </thead>
           <tbody id="adminRoomList"></tbody>
         </table>

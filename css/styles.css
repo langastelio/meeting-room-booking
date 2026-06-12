@@ -319,3 +319,17 @@ td .btn-bar button { padding: 5px 10px; font-size: 0.8rem; }
 .tour-step { font-size: .76rem; color: var(--muted); }
 .tour-actions { display: flex; gap: 8px; }
 .tour-actions button { padding: 7px 12px; font-size: .82rem; }
+
+/* ---- Language toggle ---- */
+.lang-toggle {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.lang-toggle:hover { background: var(--border); }
+.lang-toggle.float { position: fixed; top: 14px; right: 14px; z-index: 50; }

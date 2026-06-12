@@ -7,6 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="css/styles.css" />
   <script src="js/theme.js"></script>
+  <script src="js/i18n.js"></script>
   <!-- Require ADMIN before showing this page -->
   <script>
     (function () {
@@ -21,56 +22,57 @@
 </head>
 <body>
   <header>
-    <h1><span class="logo">▦</span> Meeting Room Booking</h1>
+    <h1><span class="logo">▦</span> <span data-i18n="brand">Meeting Room Booking</span></h1>
     <nav>
-      <a href="index.html">Book a Room</a>
-      <a href="admin.html" id="navAdmin">Admin</a>
-      <a href="users.html" id="navUsers" class="active">Users</a>
-      <a href="history.html" id="navHistory">History</a>
+      <a href="index.html" data-i18n="nav.book">Book a Room</a>
+      <a href="admin.html" id="navAdmin" data-i18n="nav.admin">Admin</a>
+      <a href="users.html" id="navUsers" class="active" data-i18n="nav.users">Users</a>
+      <a href="history.html" id="navHistory" data-i18n="nav.history">History</a>
       <span class="user-badge" id="userBadge"></span>
+      <button class="lang-toggle" type="button">PT</button>
       <button class="theme-toggle" type="button">☀️</button>
-      <button class="logout" id="logoutBtn" type="button">Logout</button>
+      <button class="logout" id="logoutBtn" type="button" data-i18n="btn.logout">Logout</button>
     </nav>
   </header>
 
   <main>
-    <h2 class="page-title">Users</h2>
-    <p class="page-sub">Create accounts and control who can access the system. Only admins can open this page.</p>
+    <h2 class="page-title" data-i18n="title.users">Users</h2>
+    <p class="page-sub" data-i18n="sub.users">Create accounts and control who can access the system. Only admins can open this page.</p>
 
     <div class="grid two">
       <!-- Create user -->
       <section class="card">
-        <h2>Create a User</h2>
+        <h2 data-i18n="card.createUser">Create a User</h2>
         <form id="userForm">
-          <label for="newName">Full name</label>
+          <label for="newName" data-i18n="label.fullName">Full name</label>
           <input id="newName" type="text" placeholder="e.g. Stelio Langa" autocomplete="off" required />
 
-          <label for="newUsername">Username</label>
+          <label for="newUsername" data-i18n="label.username">Username</label>
           <input id="newUsername" type="text" placeholder="e.g. slanga" autocomplete="off" required />
 
-          <label for="newEmail">Email <span class="muted-note" style="display:inline">(for notifications)</span></label>
+          <label for="newEmail" data-i18n="label.email">Email</label>
           <input id="newEmail" type="email" placeholder="e.g. stelio@company.com" autocomplete="off" />
 
-          <label for="newPassword">Temporary password</label>
+          <label for="newPassword" data-i18n="label.tempPassword">Temporary password</label>
           <input id="newPassword" type="text" placeholder="they'll reset it on first login" autocomplete="new-password" required />
 
-          <label for="newRole">Role</label>
+          <label for="newRole" data-i18n="label.role">Role</label>
           <select id="newRole">
-            <option value="user">User — can book rooms</option>
-            <option value="admin">Admin — can manage rooms &amp; users</option>
+            <option value="user" data-i18n="opt.roleUser">User — can book rooms</option>
+            <option value="admin" data-i18n="opt.roleAdmin">Admin — can manage rooms &amp; users</option>
           </select>
 
-          <button type="submit" class="block">Create User</button>
+          <button type="submit" class="block" data-i18n="btn.createUser">Create User</button>
           <div id="userAlert" class="alert"></div>
         </form>
       </section>
 
       <!-- User list -->
       <section class="card">
-        <h2>Existing Users</h2>
+        <h2 data-i18n="card.existingUsers">Existing Users</h2>
         <table>
           <thead>
-            <tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr>
+            <tr><th data-i18n="th.name">Name</th><th data-i18n="th.username">Username</th><th data-i18n="th.email">Email</th><th data-i18n="th.role">Role</th><th data-i18n="th.status">Status</th><th data-i18n="th.actions">Actions</th></tr>
           </thead>
           <tbody id="userList"></tbody>
         </table>

@@ -21,6 +21,9 @@ function showAlert(msg, ok) {
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+const T = (k, v) => (typeof I18N !== "undefined" ? I18N.t(k, v) : k);
+const statusLabel = (active) => (active ? T("status.active") : T("status.inactive"));
+
 function roomRow(r) {
   if (editingRoomId === r.id) {
     return `
@@ -29,10 +32,10 @@ function roomRow(r) {
         <td><input type="text" data-edit-location value="${esc(r.location)}" /></td>
         <td><input type="number" min="1" data-edit-capacity value="${esc(r.capacity)}" style="max-width:80px" /></td>
         <td><input type="text" data-edit-facilities value="${esc(r.facilities)}" /></td>
-        <td><span class="pill ${r.active ? "on" : "off"}">${r.active ? "Active" : "Inactive"}</span></td>
+        <td><span class="pill ${r.active ? "on" : "off"}">${statusLabel(r.active)}</span></td>
         <td><div class="btn-bar">
-          <button data-save="${r.id}">Save</button>
-          <button class="ghost" data-cancel="1">Cancel</button>
+          <button data-save="${r.id}">${T("btn.save")}</button>
+          <button class="ghost" data-cancel="1">${T("btn.cancel")}</button>
         </div></td>
       </tr>`;
   }
@@ -42,11 +45,11 @@ function roomRow(r) {
       <td>${esc(r.location)}</td>
       <td>${esc(r.capacity)}</td>
       <td>${esc(r.facilities) || "—"}</td>
-      <td><span class="pill ${r.active ? "on" : "off"}">${r.active ? "Active" : "Inactive"}</span></td>
+      <td><span class="pill ${r.active ? "on" : "off"}">${statusLabel(r.active)}</span></td>
       <td><div class="btn-bar">
-        <button class="ghost" data-edit="${r.id}">Edit</button>
+        <button class="ghost" data-edit="${r.id}">${T("btn.edit")}</button>
         <button class="ghost" data-toggle="${r.id}" data-to="${r.active ? "false" : "true"}">
-          ${r.active ? "Deactivate" : "Activate"}
+          ${r.active ? T("btn.deactivate") : T("btn.activate")}
         </button>
         <button class="icon-btn" data-del="${r.id}" title="Delete room">✕</button>
       </div></td>
@@ -56,7 +59,7 @@ function roomRow(r) {
 function renderRooms() {
   const rooms = DB.getRooms();
   if (!rooms.length) {
-    a.list.innerHTML = `<tr><td colspan="6" class="empty">No rooms yet. Add your first one on the left.</td></tr>`;
+    a.list.innerHTML = `<tr><td colspan="6" class="empty">${T("empty.noRoomsAdmin")}</td></tr>`;
     return;
   }
   a.list.innerHTML = rooms.map(roomRow).join("");
@@ -137,6 +140,8 @@ a.form.addEventListener("submit", async (e) => {
     btn.textContent = "Add Room";
   }
 });
+
+window.addEventListener("languagechange", renderRooms);
 
 (async function init() {
   await DB.init();

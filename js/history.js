@@ -11,6 +11,7 @@ const H = {
 
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const T = (k, v) => (typeof I18N !== "undefined" ? I18N.t(k, v) : k);
 
 const endTs = (b) => new Date(`${b.date}T${b.endTime}`).getTime();
 
@@ -27,16 +28,16 @@ function reportBookings() {
 }
 
 function statusCell(b) {
-  if (b.status === "cancelled") return `<span class="pill off">Cancelled</span>`;
-  return `<span class="pill on">Held</span>`;
+  if (b.status === "cancelled") return `<span class="pill off">${T("status.cancelled")}</span>`;
+  return `<span class="pill on">${T("status.held")}</span>`;
 }
 
 function render() {
   const rows = reportBookings();
   const cancelled = rows.filter((b) => b.status === "cancelled").length;
-  H.count.textContent = `${rows.length} total · ${cancelled} cancelled`;
+  H.count.textContent = T("history.count", { total: rows.length, cancelled });
   if (!rows.length) {
-    H.list.innerHTML = `<tr><td colspan="8" class="empty">No meetings for this range.</td></tr>`;
+    H.list.innerHTML = `<tr><td colspan="8" class="empty">${T("history.empty")}</td></tr>`;
     return;
   }
   H.list.innerHTML = rows
@@ -82,6 +83,7 @@ H.from.addEventListener("change", render);
 H.to.addEventListener("change", render);
 H.clear.addEventListener("click", () => { H.from.value = ""; H.to.value = ""; render(); });
 H.csv.addEventListener("click", exportCsv);
+window.addEventListener("languagechange", render);
 
 (async function init() {
   await DB.init();

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/styles.css" />
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script src="js/theme.js"></script>
+  <script src="js/i18n.js"></script>
   <!-- Require ADMIN before showing this page -->
   <script>
     (function () {
@@ -22,35 +23,36 @@
 </head>
 <body>
   <header>
-    <h1><span class="logo">▦</span> Meeting Room Booking</h1>
+    <h1><span class="logo">▦</span> <span data-i18n="brand">Meeting Room Booking</span></h1>
     <nav>
-      <a href="index.html">Book a Room</a>
-      <a href="admin.html" id="navAdmin">Admin</a>
-      <a href="users.html" id="navUsers">Users</a>
-      <a href="history.html" id="navHistory" class="active">History</a>
+      <a href="index.html" data-i18n="nav.book">Book a Room</a>
+      <a href="admin.html" id="navAdmin" data-i18n="nav.admin">Admin</a>
+      <a href="users.html" id="navUsers" data-i18n="nav.users">Users</a>
+      <a href="history.html" id="navHistory" class="active" data-i18n="nav.history">History</a>
       <span class="user-badge" id="userBadge"></span>
+      <button class="lang-toggle" type="button">PT</button>
       <button class="theme-toggle" type="button">☀️</button>
-      <button class="logout" id="logoutBtn" type="button">Logout</button>
+      <button class="logout" id="logoutBtn" type="button" data-i18n="btn.logout">Logout</button>
     </nav>
   </header>
 
   <main>
-    <h2 class="page-title">Meeting History</h2>
-    <p class="page-sub">Meetings that have already taken place — for reporting. Newest first.</p>
+    <h2 class="page-title" data-i18n="title.history">Meeting History</h2>
+    <p class="page-sub" data-i18n="sub.history">Meetings that have already taken place — for reporting. Newest first.</p>
 
     <section class="card">
       <div class="btn-bar" style="margin-bottom:14px; align-items:center;">
-        <label for="fromDate" style="margin:0;">From</label>
+        <label for="fromDate" style="margin:0;" data-i18n="filter.from">From</label>
         <input id="fromDate" type="date" style="max-width:170px" />
-        <label for="toDate" style="margin:0;">To</label>
+        <label for="toDate" style="margin:0;" data-i18n="filter.to">To</label>
         <input id="toDate" type="date" style="max-width:170px" />
-        <button class="ghost" id="clearFilter" type="button">Clear</button>
-        <button id="exportCsv" type="button">⬇ Download CSV</button>
+        <button class="ghost" id="clearFilter" type="button" data-i18n="btn.clear">Clear</button>
+        <button id="exportCsv" type="button"><span data-i18n="btn.exportCsv">Download CSV</span></button>
         <span class="user-badge" id="countBadge"></span>
       </div>
       <table>
         <thead>
-          <tr><th>Date</th><th>Time</th><th>Room</th><th>Meeting</th><th>Booked by</th><th>Status</th><th>Cancelled by</th><th>Reason</th></tr>
+          <tr><th data-i18n="th.date">Date</th><th data-i18n="th.time">Time</th><th data-i18n="th.room">Room</th><th data-i18n="th.meeting">Meeting</th><th data-i18n="th.bookedBy">Booked by</th><th data-i18n="th.status">Status</th><th data-i18n="th.cancelledBy">Cancelled by</th><th data-i18n="th.reason">Reason</th></tr>
         </thead>
         <tbody id="historyList"></tbody>
       </table>

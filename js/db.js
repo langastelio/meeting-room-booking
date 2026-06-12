@@ -100,10 +100,18 @@ const DB = (() => {
 
     const dur = toMin(endTime) - toMin(startTime);
     const DAY_START = 8 * 60, DAY_END = 18 * 60, STEP = 30;
+
+    // If the booking is for today, never suggest a slot that already started.
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const minStart = date === todayStr ? now.getHours() * 60 + now.getMinutes() : -1;
+
     const times = [];
     for (let s = DAY_START; s + dur <= DAY_END && times.length < 4; s += STEP) {
+      if (s <= minStart) continue;       // skip times already in the past
       const sH = toHHMM(s), eH = toHHMM(s + dur);
-      if (sH === startTime) continue; // skip the slot that just clashed
+      if (sH === startTime) continue;    // skip the slot that just clashed
       if (roomFree(dayBookings, roomId, date, sH, eH)) times.push({ start: sH, end: eH });
     }
     return { rooms: freeRooms, times };

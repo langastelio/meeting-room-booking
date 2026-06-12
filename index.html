@@ -10,6 +10,7 @@
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <!-- Apply saved theme before paint to avoid a flash -->
   <script src="js/theme.js"></script>
+  <script src="js/i18n.js"></script>
   <!-- Require login; force password reset if the account still has a temp password -->
   <script>
     (function () {
@@ -23,51 +24,52 @@
 </head>
 <body>
   <header>
-    <h1><span class="logo">▦</span> Meeting Room Booking (PPB Mozambique)</h1>
+    <h1><span class="logo">▦</span> <span data-i18n="brand">Meeting Room Booking (PPB Mozambique)</span></h1>
     <nav>
-      <a href="index.html" class="active">Book a Room</a>
-      <a href="admin.html" id="navAdmin">Admin</a>
-      <a href="users.html" id="navUsers">Users</a>
-      <a href="history.html" id="navHistory">History</a>
+      <a href="index.html" class="active" data-i18n="nav.book">Book a Room</a>
+      <a href="admin.html" id="navAdmin" data-i18n="nav.admin">Admin</a>
+      <a href="users.html" id="navUsers" data-i18n="nav.users">Users</a>
+      <a href="history.html" id="navHistory" data-i18n="nav.history">History</a>
       <span class="user-badge" id="userBadge"></span>
+      <button class="lang-toggle" type="button">PT</button>
       <button class="theme-toggle" type="button">☀️</button>
-      <button class="logout" id="logoutBtn" type="button">Logout</button>
+      <button class="logout" id="logoutBtn" type="button" data-i18n="btn.logout">Logout</button>
     </nav>
   </header>
 
   <main>
-    <h2 class="page-title">Book a Room</h2>
-    <p class="page-sub">Pick a room, choose a time slot and reserve it. Only one meeting can be booked per time slot — overlapping times are blocked.</p>
+    <h2 class="page-title" data-i18n="title.book">Book a Room</h2>
+    <p class="page-sub" data-i18n="sub.book">Pick a room, choose a time slot and reserve it. Only one meeting can be booked per time slot — overlapping times are blocked.</p>
 
     <div class="grid two">
       <!-- Booking form -->
       <section class="card">
-        <h2>New Booking</h2>
+        <h2 data-i18n="card.newBooking">New Booking</h2>
         <form id="bookingForm">
-          <label for="room">Meeting Room</label>
+          <label for="room" data-i18n="label.room">Meeting Room</label>
           <select id="room" required></select>
 
-          <label for="title">Meeting Title</label>
-          <input id="title" type="text" placeholder="e.g. Sprint Planning" required />
+          <label for="title" data-i18n="label.title">Meeting Title</label>
+          <input id="title" type="text" data-i18n-ph="ph.title" placeholder="e.g. Sprint Planning" required />
 
-          <label for="bookedBy">Booking as</label>
+          <label for="bookedBy" data-i18n="label.bookedBy">Booking as</label>
           <input id="bookedBy" type="text" readonly title="You are booking as your signed-in account" />
 
-          <label for="date">Date</label>
+          <label for="date" data-i18n="label.date">Date</label>
           <input id="date" type="date" required />
 
           <div class="row">
             <div>
-              <label for="startTime">Start</label>
+              <label for="startTime" data-i18n="label.start">Start</label>
               <input id="startTime" type="time" required />
             </div>
             <div>
-              <label for="endTime">End</label>
+              <label for="endTime" data-i18n="label.end">End</label>
               <input id="endTime" type="time" required />
             </div>
           </div>
 
-          <button type="submit" class="block">Reserve Room</button>
+          <button type="submit" class="block" data-i18n="btn.reserve">Reserve Room</button>
           <div id="formAlert" class="alert"></div>
           <div id="suggestions" class="suggestions"></div>
         </form>
@@ -76,15 +78,15 @@
       <!-- Rooms + bookings -->
       <div class="grid">
         <section class="card">
-          <h2>Available Rooms</h2>
+          <h2 data-i18n="card.availableRooms">Available Rooms</h2>
           <div id="roomList" class="rooms"></div>
         </section>
 
         <section class="card">
-          <h2>Upcoming Bookings</h2>
+          <h2 data-i18n="card.upcoming">Upcoming Bookings</h2>
           <table>
             <thead>
-              <tr><th>Room</th><th>Meeting</th><th>By</th><th>Date</th><th>Time</th><th></th></tr>
+              <tr><th data-i18n="th.room">Room</th><th data-i18n="th.meeting">Meeting</th><th data-i18n="th.by">By</th><th data-i18n="th.date">Date</th><th data-i18n="th.time">Time</th><th></th></tr>
             </thead>
             <tbody id="bookingList"></tbody>
           </table>
@@ -96,14 +98,14 @@
   <!-- Cancel-meeting modal -->
   <div class="modal-overlay" id="cancelModal" hidden>
     <div class="modal">
-      <h2>Cancel meeting</h2>
-      <p class="page-sub" id="cancelModalSub">Tell everyone why this meeting is being cancelled.</p>
-      <label for="cancelReason">Reason</label>
-      <textarea id="cancelReason" rows="3" placeholder="e.g. Rescheduled to next week"></textarea>
+      <h2 data-i18n="modal.cancelTitle">Cancel meeting</h2>
+      <p class="page-sub" id="cancelModalSub" data-i18n="modal.cancelSub">Tell everyone why this meeting is being cancelled.</p>
+      <label for="cancelReason" data-i18n="label.reason">Reason</label>
+      <textarea id="cancelReason" rows="3" data-i18n-ph="ph.reason" placeholder="e.g. Rescheduled to next week"></textarea>
       <div id="cancelModalErr" class="alert"></div>
       <div class="btn-bar" style="justify-content:flex-end; margin-top:16px;">
-        <button class="ghost" id="cancelModalDismiss" type="button">Keep meeting</button>
-        <button class="danger" id="cancelModalConfirm" type="button">Cancel meeting</button>
+        <button class="ghost" id="cancelModalDismiss" type="button" data-i18n="btn.keep">Keep meeting</button>
+        <button class="danger" id="cancelModalConfirm" type="button" data-i18n="btn.cancelMeeting">Cancel meeting</button>
       </div>
     </div>
   </div>

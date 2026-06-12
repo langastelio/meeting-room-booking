@@ -56,7 +56,7 @@ function askCancelReason(label) {
     const onConfirm = () => {
       const v = m.reason.value.trim();
       if (!v) {
-        m.err.textContent = "Please enter a reason.";
+        m.err.textContent = T("cancel.reasonRequired");
         m.err.className = "alert show err";
         m.reason.focus();
         return;
@@ -88,17 +88,20 @@ function canCancel(b) {
   return false;
 }
 
+// Translation helper (falls back to the key if i18n isn't loaded).
+const T = (k, v) => (typeof I18N !== "undefined" ? I18N.t(k, v) : k);
+
 function renderRoomOptions() {
   const rooms = DB.getActiveRooms();
   els.room.innerHTML = rooms.length
     ? rooms.map((r) => `<option value="${r.id}">${r.name} — ${r.location} (${r.capacity})</option>`).join("")
-    : `<option value="">No rooms yet — add one in Admin</option>`;
+    : `<option value="">${T("empty.noRooms")}</option>`;
 }
 
 function renderRooms() {
   const rooms = DB.getActiveRooms();
   if (!rooms.length) {
-    els.roomList.innerHTML = `<p class="empty">No rooms yet. Go to <a href="admin.html">Admin</a> to add one.</p>`;
+    els.roomList.innerHTML = `<p class="empty">${T("empty.noRooms")}</p>`;
     return;
   }
   els.roomList.innerHTML = rooms
@@ -109,7 +112,7 @@ function renderRooms() {
       return `
         <div class="room" data-id="${r.id}">
           <h3>${r.name}</h3>
-          <div class="meta">${r.location} · seats ${r.capacity}</div>
+          <div class="meta">${r.location} · ${r.capacity} ${T("seats")}</div>
           <div class="tags">${tags}</div>
         </div>`;
     })
@@ -142,7 +145,7 @@ function renderBookings() {
     .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
 
   if (!bookings.length) {
-    els.bookingList.innerHTML = `<tr><td colspan="6" class="empty">No upcoming meetings.</td></tr>`;
+    els.bookingList.innerHTML = `<tr><td colspan="6" class="empty">${T("empty.noUpcoming")}</td></tr>`;
     return;
   }
   els.bookingList.innerHTML = bookings
@@ -202,20 +205,20 @@ function clearSuggestions() {
 // Show clickable alternatives after a clash. Clicking one applies it and re-books.
 function renderSuggestions(s) {
   if (!s || (!s.rooms.length && !s.times.length)) {
-    els.suggestions.innerHTML = `<p class="muted-note">No free alternatives found in 08:00–18:00 that day. Try another day.</p>`;
+    els.suggestions.innerHTML = `<p class="muted-note">${T("sugg.none")}</p>`;
     els.suggestions.classList.add("show");
     return;
   }
   let html = "";
   if (s.rooms.length) {
-    html += `<p class="muted-note">Free rooms at the same time:</p><div class="btn-bar">`;
+    html += `<p class="muted-note">${T("sugg.freeRooms")}</p><div class="btn-bar">`;
     html += s.rooms
       .map((r) => `<button type="button" class="ghost" data-room="${r.id}">${esc(r.name)}</button>`)
       .join("");
     html += `</div>`;
   }
   if (s.times.length) {
-    html += `<p class="muted-note">Free times for this room:</p><div class="btn-bar">`;
+    html += `<p class="muted-note">${T("sugg.tryTimes")}</p><div class="btn-bar">`;
     html += s.times
       .map((t) => `<button type="button" class="ghost" data-start="${t.start}" data-end="${t.end}">${t.start}–${t.end}</button>`)
       .join("");
@@ -242,12 +245,12 @@ function renderSuggestions(s) {
 
 els.form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!els.room.value) return showAlert("Please add a room first.", false);
+  if (!els.room.value) return showAlert(T("msg.addRoomFirst"), false);
 
   const me = typeof Auth !== "undefined" ? Auth.session() : null;
   const btn = els.form.querySelector('button[type="submit"]');
   btn.disabled = true;
-  btn.textContent = "Reserving…";
+  btn.textContent = T("btn.reserving");
   clearSuggestions();
   try {
     const result = await DB.addBooking({
@@ -266,7 +269,7 @@ els.form.addEventListener("submit", async (e) => {
       return;
     }
 
-    showAlert("Room booked.", true);
+    showAlert(T("msg.booked"), true);
     clearSuggestions();
     els.title.value = "";
     renderRoomOptions();
@@ -275,11 +278,14 @@ els.form.addEventListener("submit", async (e) => {
     showAlert("Could not save: " + err.message, false);
   } finally {
     btn.disabled = false;
-    btn.textContent = "Reserve Room";
+    btn.textContent = T("btn.reserve");
   }
 });
 
 els.room.addEventListener("change", highlightSelected);
+
+// Re-render JS-generated text when the language changes.
+window.addEventListener("languagechange", () => { clearSuggestions(); renderAll(true); });
 
 // Re-render everything. When preserveSelection is true, keep the room the user
 // has chosen in the form (so background refreshes don't reset it mid-booking).

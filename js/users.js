@@ -20,12 +20,13 @@ function showAlert(msg, ok) {
 }
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const T = (k, v) => (typeof I18N !== "undefined" ? I18N.t(k, v) : k);
 
 function rowHtml(u, me) {
   const self = me && me.id === u.id;
   const roleBadge = `<span class="pill ${u.role === "admin" ? "on" : "off"}">${u.role}</span>`;
-  const statusBadge = `<span class="pill ${u.active ? "on" : "off"}">${u.active ? "Active" : "Disabled"}</span>`;
-  const pending = u.must_reset ? ` <span class="tag">temp pw</span>` : "";
+  const statusBadge = `<span class="pill ${u.active ? "on" : "off"}">${u.active ? T("status.active") : T("status.disabled")}</span>`;
+  const pending = u.must_reset ? ` <span class="tag">${T("tag.tempPw")}</span>` : "";
 
   if (editingId === u.id) {
     // Inline edit mode
@@ -42,22 +43,22 @@ function rowHtml(u, me) {
         </td>
         <td>${statusBadge}</td>
         <td><div class="btn-bar">
-          <button data-save="${u.id}">Save</button>
-          <button class="ghost" data-cancel="1">Cancel</button>
+          <button data-save="${u.id}">${T("btn.save")}</button>
+          <button class="ghost" data-cancel="1">${T("btn.cancel")}</button>
         </div></td>
       </tr>`;
   }
 
-  const actions = [`<button class="ghost" data-edit="${u.id}">Edit</button>`];
+  const actions = [`<button class="ghost" data-edit="${u.id}">${T("btn.edit")}</button>`];
   if (!self) {
-    actions.push(`<button class="ghost" data-reset="${u.id}" data-username="${esc(u.username)}">Reset PW</button>`);
-    actions.push(`<button class="ghost" data-active="${u.id}" data-to="${u.active ? "false" : "true"}">${u.active ? "Disable" : "Enable"}</button>`);
+    actions.push(`<button class="ghost" data-reset="${u.id}" data-username="${esc(u.username)}">${T("btn.resetPw")}</button>`);
+    actions.push(`<button class="ghost" data-active="${u.id}" data-to="${u.active ? "false" : "true"}">${u.active ? T("btn.disable") : T("btn.enable")}</button>`);
     actions.push(`<button class="icon-btn" data-del="${u.id}" title="Delete user">✕</button>`);
   }
 
   return `
     <tr data-row="${u.id}">
-      <td>${esc(u.name || "—")}${self ? " <span class='tag'>you</span>" : ""}</td>
+      <td>${esc(u.name || "—")}${self ? ` <span class='tag'>${T("tag.you")}</span>` : ""}</td>
       <td>${esc(u.username)}</td>
       <td>${esc(u.email || "—")}</td>
       <td>${roleBadge}${pending}</td>
@@ -156,6 +157,8 @@ U.form.addEventListener("submit", async (e) => {
     btn.textContent = "Create User";
   }
 });
+
+window.addEventListener("languagechange", renderUsers);
 
 (async function init() {
   if (!Auth.hasBackend()) {

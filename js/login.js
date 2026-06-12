@@ -13,6 +13,16 @@ const L = {
 };
 
 let firstRun = false; // true when there are no users yet → create-admin mode
+const T = (k, v) => (typeof I18N !== "undefined" ? I18N.t(k, v) : k);
+
+// Apply the create-admin labels (also re-applied when the language changes).
+function applyFirstRunText() {
+  if (!firstRun) return;
+  L.title.textContent = T("title.firstAdmin");
+  L.sub.textContent = T("sub.firstAdmin");
+  L.btn.textContent = T("btn.createAdmin");
+}
+window.addEventListener("languagechange", applyFirstRunText);
 
 function showAlert(msg, ok) {
   L.alert.textContent = msg;
@@ -23,7 +33,7 @@ L.form.addEventListener("submit", async (e) => {
   e.preventDefault();
   L.btn.disabled = true;
   const original = L.btn.textContent;
-  L.btn.textContent = "Please wait…";
+  L.btn.textContent = T("msg.pleaseWait");
   try {
     const username = L.username.value.trim();
     const password = L.password.value;
@@ -73,7 +83,7 @@ setTimeout(function () {
 // Notice if the previous session ended due to inactivity.
 if (localStorage.getItem("mrb_logout_reason") === "idle") {
   localStorage.removeItem("mrb_logout_reason");
-  showAlert("You were signed out after 15 minutes of inactivity.", false);
+  showAlert(T("msg.idleLogout"), false);
 }
 
 (async function init() {
@@ -84,9 +94,7 @@ if (localStorage.getItem("mrb_logout_reason") === "idle") {
   try {
     if ((await Auth.userCount()) === 0) {
       firstRun = true;
-      L.title.textContent = "Create the first admin";
-      L.sub.textContent = "No accounts exist yet. The first account becomes the administrator.";
-      L.btn.textContent = "Create admin & continue";
+      applyFirstRunText();
       L.password.setAttribute("autocomplete", "new-password");
       L.nameRow.style.display = "block";
       L.fullName.required = true;
