@@ -59,6 +59,15 @@ L.form.addEventListener("submit", async (e) => {
   }
 });
 
+// "Forgot password?" — there's no email reset; an admin resets it for you.
+const forgotLink = document.getElementById("forgotLink");
+if (forgotLink) {
+  forgotLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    showAlert(T("forgot.msg"), false);
+  });
+}
+
 // Show / hide password
 const togglePass = document.getElementById("togglePass");
 if (togglePass) {
@@ -98,6 +107,8 @@ if (localStorage.getItem("mrb_logout_reason") === "idle") {
       L.password.setAttribute("autocomplete", "new-password");
       L.nameRow.style.display = "block";
       L.fullName.required = true;
+      const forgotRow = document.getElementById("forgotRow");
+      if (forgotRow) forgotRow.style.display = "none"; // no account to recover yet
     }
   } catch (err) {
     showAlert("Could not reach the database: " + (err.message || err), false);

@@ -3,11 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin — Meeting Room Booking</title>
+  <title>Dashboard — Meeting Room Booking</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="css/styles.css" />
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <!-- Apply saved theme before paint to avoid a flash -->
   <script src="js/theme.js"></script>
   <script src="js/i18n.js"></script>
   <!-- Require ADMIN before showing this page -->
@@ -28,8 +27,8 @@
     <nav>
       <a href="index.html" data-i18n="nav.book">Book a Room</a>
       <a href="calendar.html" id="navCalendar" data-i18n="nav.calendar">Calendar</a>
-      <a href="dashboard.html" id="navDashboard" data-i18n="nav.dashboard">Dashboard</a>
-      <a href="admin.html" id="navAdmin" class="active" data-i18n="nav.admin">Manage Rooms</a>
+      <a href="dashboard.html" id="navDashboard" class="active" data-i18n="nav.dashboard">Dashboard</a>
+      <a href="admin.html" id="navAdmin" data-i18n="nav.admin">Manage Rooms</a>
       <a href="users.html" id="navUsers" data-i18n="nav.users">Users</a>
       <a href="history.html" id="navHistory" data-i18n="nav.history">History</a>
       <span class="user-badge" id="userBadge"></span>
@@ -40,50 +39,37 @@
   </header>
 
   <main>
-    <h2 class="page-title" data-i18n="title.admin">Manage Rooms</h2>
-    <p class="page-sub" data-i18n="sub.admin">Add and remove meeting rooms. Changes save straight to the database.</p>
+    <h2 class="page-title" data-i18n="title.dashboard">Dashboard</h2>
+    <p class="page-sub" data-i18n="sub.dashboard">Room usage at a glance — totals, busiest rooms, peak hours and cancellations.</p>
+
+    <div class="stat-grid" id="statGrid"></div>
 
     <div class="grid two">
-      <!-- Add room form -->
       <section class="card">
-        <h2 data-i18n="card.addRoom">Add a Meeting Room</h2>
-        <form id="roomForm">
-          <label for="name" data-i18n="label.name">Room Name</label>
-          <input id="name" type="text" placeholder="e.g. Boardroom B" required />
-
-          <label for="location" data-i18n="label.location">Location</label>
-          <input id="location" type="text" placeholder="e.g. 2nd Floor - West Wing" required />
-
-          <label for="capacity" data-i18n="label.capacity">Capacity (seats)</label>
-          <input id="capacity" type="number" min="1" placeholder="e.g. 8" required />
-
-          <label for="facilities" data-i18n="label.facilities">Facilities (comma separated)</label>
-          <input id="facilities" type="text" data-i18n-ph="ph.facilities" placeholder="e.g. Projector, Whiteboard, TV" />
-
-          <button type="submit" class="block" data-i18n="btn.addRoom">Add Room</button>
-          <div id="roomAlert" class="alert"></div>
-        </form>
+        <h2 data-i18n="dash.topRooms">Most-booked rooms</h2>
+        <div id="chartRooms" class="barchart"></div>
       </section>
-
-      <!-- Room list -->
       <section class="card">
-        <h2 data-i18n="card.rooms">Current Rooms</h2>
-        <table>
-          <thead>
-            <tr><th data-i18n="th.name">Name</th><th data-i18n="th.location">Location</th><th data-i18n="th.seats">Seats</th><th data-i18n="th.facilities">Facilities</th><th data-i18n="th.status">Status</th><th></th></tr>
-          </thead>
-          <tbody id="adminRoomList"></tbody>
-        </table>
+        <h2 data-i18n="dash.peakHours">Peak hours</h2>
+        <div id="chartHours" class="barchart"></div>
+      </section>
+      <section class="card">
+        <h2 data-i18n="dash.byWeekday">Busiest weekdays</h2>
+        <div id="chartDays" class="barchart"></div>
+      </section>
+      <section class="card">
+        <h2 data-i18n="dash.topBookers">Top bookers</h2>
+        <div id="chartBookers" class="barchart"></div>
       </section>
     </div>
+    <p class="muted-note" data-i18n="dash.range">Counts exclude cancelled meetings, except where noted.</p>
   </main>
 
-  <!-- Supabase client (shared database) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/db.js"></script>
-  <script src="js/admin.js"></script>
+  <script src="js/dashboard.js"></script>
   <script src="js/nav.js"></script>
   <script src="js/idle.js"></script>
 </body>

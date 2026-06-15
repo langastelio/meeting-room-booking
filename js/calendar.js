@@ -316,6 +316,41 @@ function openDetails(id) {
   if (editBtn) editBtn.onclick = () => openEdit(b);
 }
 
+// ---- export to .ics (drops into Outlook / Google Calendar) ----
+function icsEscape(s) {
+  return String(s ?? "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+}
+// Local floating time stamp: YYYYMMDDTHHMMSS (no timezone = the reader's local time).
+function icsDateTime(dateISO, hhmmStr) {
+  return `${dateISO.replace(/-/g, "")}T${String(hhmmStr).replace(":", "")}00`;
+}
+function exportICS() {
+  const rooms = DB.getActiveRooms();
+  const roomName = roomFilter ? (rooms.find((r) => String(r.id) === roomFilter) || {}).name : null;
+  const bookings = activeBookings().sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Meeting Room Booking//PPB//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+  bookings.forEach((b) => {
+    lines.push("BEGIN:VEVENT");
+    lines.push(`UID:mrb-${b.id}@meeting-room-booking`);
+    lines.push(`SUMMARY:${icsEscape(b.title)}`);
+    lines.push(`DTSTART:${icsDateTime(b.date, b.startTime)}`);
+    lines.push(`DTEND:${icsDateTime(b.date, b.endTime)}`);
+    if (b.roomName) lines.push(`LOCATION:${icsEscape(b.roomName)}`);
+    if (b.bookedBy) lines.push(`DESCRIPTION:${icsEscape(T("cal.owner") + ": " + b.bookedBy)}`);
+    lines.push("END:VEVENT");
+  });
+  lines.push("END:VCALENDAR");
+
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = roomName ? `meetings-${roomName.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics` : "meetings-all-rooms.ics";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ---- toolbar ----
 function shift(dir) {
   if (viewMode === "day") cursor.setDate(cursor.getDate() + dir);
@@ -330,6 +365,7 @@ byId("calToday").addEventListener("click", () => { cursor = new Date(); render()
 byId("calWeek").addEventListener("click", () => setView("week"));
 byId("calDay").addEventListener("click", () => setView("day"));
 byId("calMonth").addEventListener("click", () => setView("month"));
+byId("calExport").addEventListener("click", exportICS);
 roomSel.addEventListener("change", () => { roomFilter = roomSel.value; render(); });
 window.addEventListener("languagechange", () => { buildRoomSelect(); render(); });
 

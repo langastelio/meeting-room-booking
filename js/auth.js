@@ -71,6 +71,21 @@ const Auth = (() => {
   const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const validEmail = (e) => EMAIL_RE.test(String(e || "").trim());
 
+  // ---- password policy -----------------------------------------------------
+  // At least 8 characters, with at least one letter and one number.
+  const PW_MIN = 8;
+  function checkPassword(pw) {
+    const p = String(pw || "");
+    return p.length >= PW_MIN && /[A-Za-z]/.test(p) && /[0-9]/.test(p);
+  }
+  function validatePassword(pw) {
+    if (checkPassword(pw)) return { ok: true };
+    const msg = typeof I18N !== "undefined"
+      ? I18N.t("err.weakPassword")
+      : "Password must be at least 8 characters and include a letter and a number.";
+    return { ok: false, error: msg };
+  }
+
   // Display name helper: prefer the person's name, fall back to username.
   const displayName = (u) => (u && (u.name || u.username)) || "";
 
@@ -109,6 +124,8 @@ const Auth = (() => {
     if (!/^[a-z0-9._@-]{3,50}$/.test(username)) {
       return { ok: false, error: "Username may only contain letters, numbers, and . _ - @ (3–50 characters)." };
     }
+    const pw = validatePassword(password);
+    if (!pw.ok) return pw;
     email = (email || "").trim();
     if (email && !validEmail(email)) return { ok: false, error: "Enter a valid email address." };
     const ph = await hash(username, password);
@@ -155,8 +172,8 @@ const Auth = (() => {
   async function changeOwnPassword(newPassword) {
     const s = session();
     if (!s) return { ok: false, error: "Not signed in." };
-    if (!newPassword || newPassword.length < 4)
-      return { ok: false, error: "Password must be at least 4 characters." };
+    const pw = validatePassword(newPassword);
+    if (!pw.ok) return pw;
     const ph = await hash(s.username, newPassword);
     const { error } = await sb
       .from("app_users")
@@ -185,6 +202,8 @@ const Auth = (() => {
   // Admin assigns a new temporary password; user must reset it on next login.
   async function resetUserPassword(id, username, tempPassword) {
     if (!tempPassword) return { ok: false, error: "Enter a temporary password." };
+    const pw = validatePassword(tempPassword);
+    if (!pw.ok) return pw;
     const ph = await hash(username, tempPassword);
     const { error } = await sb
       .from("app_users")
@@ -208,6 +227,7 @@ const Auth = (() => {
     session,
     isAdmin,
     displayName,
+    validatePassword,
     logout,
     userCount,
     listUsers,
