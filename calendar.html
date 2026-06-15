@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendar — Meeting Room Booking</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/theme.js"></script>
+  <script src="js/i18n.js"></script>
+  <!-- Require login; force password reset if needed -->
+  <script>
+    (function () {
+      try {
+        var s = JSON.parse(localStorage.getItem("mrb_session"));
+        if (!s) location.replace("login.html");
+        else if (s.mustReset) location.replace("reset-password.html");
+      } catch (e) { location.replace("login.html"); }
+    })();
+  </script>
+</head>
+<body>
+  <header>
+    <h1><span class="logo">▦</span> <span data-i18n="brand">Meeting Room Booking</span></h1>
+    <nav>
+      <a href="index.html" data-i18n="nav.book">Book a Room</a>
+      <a href="calendar.html" id="navCalendar" class="active" data-i18n="nav.calendar">Calendar</a>
+      <a href="admin.html" id="navAdmin" data-i18n="nav.admin">Manage Rooms</a>
+      <a href="users.html" id="navUsers" data-i18n="nav.users">Users</a>
+      <a href="history.html" id="navHistory" data-i18n="nav.history">History</a>
+      <span class="user-badge" id="userBadge"></span>
+      <button class="lang-toggle" type="button">PT</button>
+      <button class="theme-toggle" type="button">☀️</button>
+      <button class="logout" id="logoutBtn" type="button" data-i18n="btn.logout">Logout</button>
+    </nav>
+  </header>
+
+  <main>
+    <h2 class="page-title" data-i18n="title.calendar">Calendar</h2>
+    <p class="page-sub" data-i18n="sub.calendar">See booked meetings. Click an empty slot to book one.</p>
+
+    <div class="cal-toolbar">
+      <select id="calRoom"></select>
+      <div class="cal-nav">
+        <button class="ghost" id="calPrev" type="button">‹</button>
+        <button class="ghost" id="calToday" type="button" data-i18n="cal.today">Today</button>
+        <button class="ghost" id="calNext" type="button">›</button>
+      </div>
+      <span class="cal-weeklabel" id="calWeekLabel"></span>
+    </div>
+
+    <div class="cal-wrap">
+      <div class="cal-grid" id="calGrid"></div>
+    </div>
+  </main>
+
+  <!-- Generic modal (book / details) -->
+  <div class="modal-overlay" id="calModal" hidden>
+    <div class="modal">
+      <h2 id="calModalTitle">New meeting</h2>
+      <div id="calModalBody"></div>
+      <div id="calModalAlert" class="alert"></div>
+      <div class="btn-bar" style="justify-content:flex-end; margin-top:16px;">
+        <button class="ghost" id="calModalClose" type="button" data-i18n="btn.close">Close</button>
+        <button id="calModalAction" type="button"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/calendar.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/idle.js"></script>
+</body>
+</html>
