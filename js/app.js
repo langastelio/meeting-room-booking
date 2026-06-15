@@ -15,6 +15,7 @@ const els = {
   suggestions: document.getElementById("suggestions"),
   roomList: document.getElementById("roomList"),
   bookingList: document.getElementById("bookingList"),
+  mineOnly: document.getElementById("mineOnly"),
 };
 
 const esc = (s) =>
@@ -159,6 +160,14 @@ function canCancel(b) {
   return false;
 }
 
+// Is this booking owned by the given user? (created_by, or name match for old rows)
+function isMine(b, me) {
+  if (!me) return false;
+  if (b.createdBy && b.createdBy === me.username) return true;
+  if (!b.createdBy && b.bookedBy && b.bookedBy === (me.name || me.username)) return true;
+  return false;
+}
+
 // Translation helper (falls back to the key if i18n isn't loaded).
 const T = (k, v) => (typeof I18N !== "undefined" ? I18N.t(k, v) : k);
 
@@ -210,13 +219,16 @@ const endTs = (b) => new Date(`${b.date}T${b.endTime}`).getTime();
 
 function renderBookings() {
   const now = Date.now();
+  const me = typeof Auth !== "undefined" ? Auth.session() : null;
+  const mineOnly = els.mineOnly && els.mineOnly.checked;
   // "Upcoming" = not cancelled and not ended. Cancelled/held ones move to History.
   const bookings = DB.getBookings()
     .filter((b) => b.status !== "cancelled" && (isNaN(endTs(b)) || endTs(b) > now))
+    .filter((b) => !mineOnly || isMine(b, me))
     .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
 
   if (!bookings.length) {
-    els.bookingList.innerHTML = `<tr><td colspan="6" class="empty">${T("empty.noUpcoming")}</td></tr>`;
+    els.bookingList.innerHTML = `<tr><td colspan="6" class="empty">${T(mineOnly ? "empty.noMine" : "empty.noUpcoming")}</td></tr>`;
     return;
   }
   els.bookingList.innerHTML = bookings
@@ -422,6 +434,15 @@ els.form.addEventListener("submit", async (e) => {
 });
 
 els.room.addEventListener("change", highlightSelected);
+
+// "My bookings only" toggle — remember the choice across visits.
+if (els.mineOnly) {
+  els.mineOnly.checked = localStorage.getItem("mrb_mine_only") === "1";
+  els.mineOnly.addEventListener("change", () => {
+    localStorage.setItem("mrb_mine_only", els.mineOnly.checked ? "1" : "0");
+    renderBookings();
+  });
+}
 
 // Re-render JS-generated text when the language changes.
 window.addEventListener("languagechange", () => { clearSuggestions(); renderAll(true); });

@@ -177,6 +177,12 @@ th.sortable.sort-desc::after { content: "↓"; opacity: 1; }
 .bar-fill { display: block; height: 100%; background: var(--primary); border-radius: 999px; min-width: 2px; transition: width .3s ease; }
 .bar-val { font-size: 0.82rem; color: var(--muted); text-align: right; }
 
+/* ---- Card header with inline control (e.g. "My bookings only") ---- */
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.card-head h2 { margin: 0; }
+.toggle-inline { display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--muted); cursor: pointer; margin: 0; white-space: nowrap; }
+.toggle-inline input { width: auto; margin: 0; cursor: pointer; }
+
 /* ---- Forgot-password link ---- */
 .auth-forgot { text-align: center; margin: 14px 0 0; font-size: 0.88rem; }
 .auth-forgot a { color: var(--primary); text-decoration: none; }
