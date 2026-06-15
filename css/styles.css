@@ -151,6 +151,18 @@ th { color: var(--muted); font-weight: 600; }
 tr:last-child td { border-bottom: none; }
 .empty { color: var(--muted); padding: 24px; text-align: center; }
 
+/* ---- Datatable (search + sortable headers) ---- */
+.dt-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+.dt-toolbar input[type="search"] { flex: 1; min-width: 200px; max-width: 360px; margin: 0; }
+.dt-wrap { overflow-x: auto; }
+th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+th.sortable:hover { color: var(--text); }
+th.sortable::after { content: "⇅"; opacity: .35; margin-left: 6px; font-size: .8em; }
+th.sortable.sort-asc::after { content: "↑"; opacity: 1; }
+th.sortable.sort-desc::after { content: "↓"; opacity: 1; }
+.datatable td .btn-bar { gap: 6px; flex-wrap: nowrap; }
+.datatable td .btn-bar button { white-space: nowrap; }
+
 /* ---- Toast / alerts ---- */
 .alert { padding: 10px 14px; border-radius: 8px; margin-top: 14px; font-size: 0.9rem; display: none; }
 .alert.show { display: block; }

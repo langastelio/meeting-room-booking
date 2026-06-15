@@ -131,6 +131,10 @@ const I18N = (() => {
       "status.disabled": "Disabled",
       "tag.you": "you",
       "tag.tempPw": "temp pw",
+      "ph.searchUsers": "Search name, username, email…",
+      "modal.editUser": "Edit user",
+      "users.shown": "{shown} of {total}",
+      "users.noMatch": "No users match your search.",
 
       // history
       "title.history": "Meeting History",
@@ -283,6 +287,10 @@ const I18N = (() => {
       "status.disabled": "Desativado",
       "tag.you": "você",
       "tag.tempPw": "pw temp",
+      "ph.searchUsers": "Procurar nome, utilizador, email…",
+      "modal.editUser": "Editar utilizador",
+      "users.shown": "{shown} de {total}",
+      "users.noMatch": "Nenhum utilizador corresponde à pesquisa.",
 
       "title.history": "Histórico de Reuniões",
       "sub.history": "Reuniões já realizadas ou canceladas — para relatórios. Mais recentes primeiro.",

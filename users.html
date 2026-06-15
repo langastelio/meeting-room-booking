@@ -40,46 +40,80 @@
     <h2 class="page-title" data-i18n="title.users">Users</h2>
     <p class="page-sub" data-i18n="sub.users">Create accounts and control who can access the system. Only admins can open this page.</p>
 
-    <div class="grid two">
-      <!-- Create user -->
-      <section class="card">
-        <h2 data-i18n="card.createUser">Create a User</h2>
-        <form id="userForm">
-          <label for="newName" data-i18n="label.fullName">Full name</label>
-          <input id="newName" type="text" placeholder="e.g. Stelio Langa" autocomplete="off" required />
+    <!-- Create user -->
+    <section class="card" style="max-width:520px;">
+      <h2 data-i18n="card.createUser">Create a User</h2>
+      <form id="userForm">
+        <label for="newName" data-i18n="label.fullName">Full name</label>
+        <input id="newName" type="text" placeholder="e.g. Stelio Langa" autocomplete="off" required />
 
-          <label for="newUsername" data-i18n="label.username">Username</label>
-          <input id="newUsername" type="text" placeholder="e.g. slanga" autocomplete="off" required />
+        <label for="newUsername" data-i18n="label.username">Username</label>
+        <input id="newUsername" type="text" placeholder="e.g. slanga" autocomplete="off" required />
 
-          <label for="newEmail" data-i18n="label.email">Email</label>
-          <input id="newEmail" type="email" placeholder="e.g. stelio@company.com" autocomplete="off" />
+        <label for="newEmail" data-i18n="label.email">Email</label>
+        <input id="newEmail" type="email" placeholder="e.g. stelio@company.com" autocomplete="off" />
 
-          <label for="newPassword" data-i18n="label.tempPassword">Temporary password</label>
-          <input id="newPassword" type="text" placeholder="they'll reset it on first login" autocomplete="new-password" required />
+        <label for="newPassword" data-i18n="label.tempPassword">Temporary password</label>
+        <input id="newPassword" type="text" placeholder="they'll reset it on first login" autocomplete="new-password" required />
 
-          <label for="newRole" data-i18n="label.role">Role</label>
-          <select id="newRole">
-            <option value="user" data-i18n="opt.roleUser">User — can book rooms</option>
-            <option value="admin" data-i18n="opt.roleAdmin">Admin — can manage rooms &amp; users</option>
-          </select>
+        <label for="newRole" data-i18n="label.role">Role</label>
+        <select id="newRole">
+          <option value="user" data-i18n="opt.roleUser">User — can book rooms</option>
+          <option value="admin" data-i18n="opt.roleAdmin">Admin — can manage rooms &amp; users</option>
+        </select>
 
-          <button type="submit" class="block" data-i18n="btn.createUser">Create User</button>
-          <div id="userAlert" class="alert"></div>
-        </form>
-      </section>
+        <button type="submit" class="block" data-i18n="btn.createUser">Create User</button>
+        <div id="userAlert" class="alert"></div>
+      </form>
+    </section>
 
-      <!-- User list -->
-      <section class="card">
-        <h2 data-i18n="card.existingUsers">Existing Users</h2>
-        <table>
+    <!-- User list (full width = no horizontal scrolling to reach the actions) -->
+    <section class="card">
+      <h2 data-i18n="card.existingUsers">Existing Users</h2>
+      <div class="dt-toolbar">
+        <input id="userSearch" type="search" data-i18n-ph="ph.searchUsers" placeholder="Search name, username, email…" autocomplete="off" />
+        <span class="user-badge" id="userCount"></span>
+      </div>
+      <div class="dt-wrap">
+        <table class="datatable" id="usersTable">
           <thead>
-            <tr><th data-i18n="th.name">Name</th><th data-i18n="th.username">Username</th><th data-i18n="th.email">Email</th><th data-i18n="th.role">Role</th><th data-i18n="th.status">Status</th><th data-i18n="th.actions">Actions</th></tr>
+            <tr>
+              <th class="sortable" data-sort="name" data-i18n="th.name">Name</th>
+              <th class="sortable" data-sort="username" data-i18n="th.username">Username</th>
+              <th class="sortable" data-sort="email" data-i18n="th.email">Email</th>
+              <th class="sortable" data-sort="role" data-i18n="th.role">Role</th>
+              <th class="sortable" data-sort="active" data-i18n="th.status">Status</th>
+              <th data-i18n="th.actions">Actions</th>
+            </tr>
           </thead>
           <tbody id="userList"></tbody>
         </table>
-      </section>
-    </div>
+      </div>
+    </section>
   </main>
+
+  <!-- Edit-user modal -->
+  <div class="modal-overlay" id="userModal" hidden>
+    <div class="modal">
+      <h2 data-i18n="modal.editUser">Edit user</h2>
+      <label for="euName" data-i18n="label.fullName">Full name</label>
+      <input id="euName" type="text" autocomplete="off" />
+      <label for="euUsername" data-i18n="label.username">Username</label>
+      <input id="euUsername" type="text" disabled />
+      <label for="euEmail" data-i18n="label.email">Email</label>
+      <input id="euEmail" type="email" autocomplete="off" />
+      <label for="euRole" data-i18n="label.role">Role</label>
+      <select id="euRole">
+        <option value="user" data-i18n="opt.roleUser">User — can book rooms</option>
+        <option value="admin" data-i18n="opt.roleAdmin">Admin — can manage rooms &amp; users</option>
+      </select>
+      <div id="userModalErr" class="alert"></div>
+      <div class="btn-bar" style="justify-content:flex-end; margin-top:16px;">
+        <button class="ghost" id="userModalDismiss" type="button" data-i18n="btn.cancel">Cancel</button>
+        <button id="userModalSave" type="button" data-i18n="btn.save">Save</button>
+      </div>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
