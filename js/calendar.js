@@ -1,4 +1,4 @@
-/* calendar.js — weekly agenda of booked meetings + click-a-slot to book */
+/* calendar.js — agenda of booked meetings (week / day / month) + click-to-book + edit */
 
 const T = (k, v) => (typeof I18N !== "undefined" ? I18N.t(k, v) : k);
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -19,8 +19,9 @@ function startOfWeek(date) {
   return x;
 }
 
-let weekStart = startOfWeek(new Date());
-let roomFilter = ""; // room id as string; "" = all rooms
+let cursor = new Date();          // the date in focus (drives every view)
+let viewMode = "week";            // "week" | "day" | "month"
+let roomFilter = "";              // room id as string; "" = all rooms
 
 const grid = byId("calGrid");
 const weekLabel = byId("calWeekLabel");
@@ -66,28 +67,33 @@ function buildRoomSelect() {
   roomSel.value = roomFilter;
 }
 
-function render() {
-  const days = [];
-  for (let i = 0; i < 7; i++) { const d = new Date(weekStart); d.setDate(d.getDate() + i); days.push(d); }
-
-  const first = days[0], last = days[6];
-  weekLabel.textContent =
-    `${first.toLocaleDateString(locale(), { day: "2-digit", month: "short" })} – ` +
-    `${last.toLocaleDateString(locale(), { day: "2-digit", month: "short", year: "numeric" })}`;
-
-  const todayISO = localISO(new Date());
-  const bookings = DB.getBookings().filter(
+// Active (non-cancelled) bookings honouring the room filter.
+function activeBookings() {
+  return DB.getBookings().filter(
     (b) => b.status !== "cancelled" && (!roomFilter || String(b.roomId) === roomFilter)
   );
+}
 
-  // Header row
+// One meeting block, showing title AND who booked it (and room when "all rooms").
+function evHTML(b) {
+  const owner = `👤 ${esc(b.bookedBy || "—")}${roomFilter ? "" : " · " + esc(b.roomName)}`;
+  return `<div class="cal-ev" data-id="${b.id}" title="${esc(b.title)} · ${esc(b.bookedBy)} (${esc(b.startTime)}–${esc(b.endTime)})">
+    <span class="cal-ev-title">${esc(b.title)}</span>
+    <span class="cal-ev-owner">${owner}</span>
+  </div>`;
+}
+
+// Shared time-grid body for week (7 days) and day (1 day) views.
+function timeGridHTML(days) {
+  const todayISO = localISO(new Date());
+  const bookings = activeBookings();
+
   let html = `<div class="cal-head cal-corner"></div>`;
   days.forEach((d) => {
     const today = localISO(d) === todayISO ? "today" : "";
     html += `<div class="cal-head ${today}">${d.toLocaleDateString(locale(), { weekday: "short" })}<br>${pad(d.getDate())}/${pad(d.getMonth() + 1)}</div>`;
   });
 
-  // Time rows
   for (let m = OPEN_MIN; m < CLOSE_MIN; m += STEP) {
     html += `<div class="cal-time">${hhmm(m)}</div>`;
     days.forEach((d) => {
@@ -96,9 +102,7 @@ function render() {
       if (covering.length) {
         const starting = covering.filter((b) => toMin(b.startTime) >= m && toMin(b.startTime) < m + STEP);
         if (starting.length) {
-          html += `<div class="cal-cell">` + starting.map((b) =>
-            `<div class="cal-ev" data-id="${b.id}" title="${esc(b.title)} (${esc(b.startTime)}–${esc(b.endTime)})">${esc(b.title)}${roomFilter ? "" : " · " + esc(b.roomName)}</div>`
-          ).join("") + `</div>`;
+          html += `<div class="cal-cell">` + starting.map(evHTML).join("") + `</div>`;
         } else {
           html += `<div class="cal-cell cal-busy" data-id="${covering[0].id}"></div>`;
         }
@@ -107,9 +111,10 @@ function render() {
       }
     });
   }
+  return html;
+}
 
-  grid.innerHTML = html;
-
+function wireGrid() {
   grid.querySelectorAll(".cal-slot").forEach((c) =>
     c.addEventListener("click", () => openBook(c.dataset.date, Number(c.dataset.min)))
   );
@@ -117,6 +122,88 @@ function render() {
     c.addEventListener("click", () => openDetails(c.dataset.id))
   );
 }
+
+function renderWeek() {
+  const ws = startOfWeek(cursor);
+  const days = [];
+  for (let i = 0; i < 7; i++) { const d = new Date(ws); d.setDate(d.getDate() + i); days.push(d); }
+  weekLabel.textContent =
+    `${days[0].toLocaleDateString(locale(), { day: "2-digit", month: "short" })} – ` +
+    `${days[6].toLocaleDateString(locale(), { day: "2-digit", month: "short", year: "numeric" })}`;
+  grid.className = "cal-grid week";
+  grid.innerHTML = timeGridHTML(days);
+  wireGrid();
+}
+
+function renderDay() {
+  const d = new Date(cursor);
+  weekLabel.textContent = d.toLocaleDateString(locale(), { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
+  grid.className = "cal-grid day";
+  grid.innerHTML = timeGridHTML([d]);
+  wireGrid();
+}
+
+function renderMonth() {
+  const year = cursor.getFullYear(), month = cursor.getMonth();
+  weekLabel.textContent = cursor.toLocaleDateString(locale(), { month: "long", year: "numeric" });
+
+  const start = startOfWeek(new Date(year, month, 1)); // Monday on/before the 1st
+  const todayISO = localISO(new Date());
+  const bookings = activeBookings();
+
+  // weekday headers (Mon..Sun)
+  let html = "";
+  const wd = new Date(start);
+  for (let i = 0; i < 7; i++) {
+    html += `<div class="cal-head">${wd.toLocaleDateString(locale(), { weekday: "short" })}</div>`;
+    wd.setDate(wd.getDate() + 1);
+  }
+
+  // 6 weeks × 7 days
+  const day = new Date(start);
+  for (let i = 0; i < 42; i++) {
+    const dateISO = localISO(day);
+    const inMonth = day.getMonth() === month;
+    const today = dateISO === todayISO ? "today" : "";
+    const dayB = bookings
+      .filter((b) => b.date === dateISO)
+      .sort((a, b) => toMin(a.startTime) - toMin(b.startTime));
+    const chips = dayB.slice(0, 3).map((b) =>
+      `<div class="cal-mchip" data-id="${b.id}" title="${esc(b.title)} · ${esc(b.bookedBy)} (${esc(b.startTime)}–${esc(b.endTime)})">${esc(b.startTime)} ${esc(b.title)}</div>`
+    ).join("");
+    const more = dayB.length > 3 ? `<div class="cal-more">+${dayB.length - 3} …</div>` : "";
+    html += `<div class="cal-mcell ${inMonth ? "" : "cal-mout"} ${today}" data-goday="${dateISO}">
+      <div class="cal-mdate">${day.getDate()}</div>${chips}${more}</div>`;
+    day.setDate(day.getDate() + 1);
+  }
+
+  grid.className = "cal-grid month";
+  grid.innerHTML = html;
+
+  // Click a chip → meeting details; click anywhere else in a day → open that day.
+  grid.querySelectorAll(".cal-mchip").forEach((c) =>
+    c.addEventListener("click", (e) => { e.stopPropagation(); openDetails(c.dataset.id); })
+  );
+  grid.querySelectorAll("[data-goday]").forEach((c) =>
+    c.addEventListener("click", () => { cursor = new Date(c.dataset.goday + "T00:00:00"); setView("day"); })
+  );
+}
+
+function render() {
+  if (viewMode === "day") renderDay();
+  else if (viewMode === "month") renderMonth();
+  else renderWeek();
+  updateViewButtons();
+}
+
+function updateViewButtons() {
+  [["calWeek", "week"], ["calDay", "day"], ["calMonth", "month"]].forEach(([id, v]) => {
+    const b = byId(id);
+    if (b) b.classList.toggle("active", viewMode === v);
+  });
+}
+
+function setView(v) { viewMode = v; render(); }
 
 function openBook(dateISO, startMin) {
   const rooms = DB.getActiveRooms();
@@ -157,6 +244,42 @@ function openBook(dateISO, startMin) {
   });
 }
 
+// Edit an existing meeting (room / title / date / time) — owner or admin only.
+function openEdit(b) {
+  const rooms = DB.getActiveRooms();
+  const roomOpts = rooms.map((r) =>
+    `<option value="${r.id}" ${Number(r.id) === Number(b.roomId) ? "selected" : ""}>${esc(r.name)}</option>`
+  ).join("");
+
+  const body = `
+    <label>${T("label.room")}</label>
+    <select id="cmRoom">${roomOpts}</select>
+    <label>${T("label.title")}</label>
+    <input id="cmTitle" type="text" value="${esc(b.title)}" />
+    <label>${T("label.date")}</label>
+    <input id="cmDate" type="date" value="${esc(b.date)}" />
+    <div class="row">
+      <div><label>${T("label.start")}</label><input id="cmStart" type="time" min="08:00" max="17:00" value="${esc(b.startTime)}" /></div>
+      <div><label>${T("label.end")}</label><input id="cmEnd" type="time" min="08:30" max="17:30" value="${esc(b.endTime)}" /></div>
+    </div>`;
+
+  openModal(T("cal.editMeeting"), body, T("btn.saveChanges"), async () => {
+    const title = byId("cmTitle").value.trim();
+    if (!title) return modalAlert(T("label.title"));
+    const r = await DB.updateBooking(b.id, {
+      roomId: byId("cmRoom").value,
+      title,
+      date: byId("cmDate").value,
+      startTime: byId("cmStart").value,
+      endTime: byId("cmEnd").value,
+    });
+    if (!r.ok) return modalAlert(r.error);
+    closeModal();
+    await DB.refresh();
+    render();
+  });
+}
+
 function openDetails(id) {
   const b = DB.getBookings().find((x) => String(x.id) === String(id));
   if (!b) return;
@@ -168,8 +291,9 @@ function openDetails(id) {
     `<div class="cal-detail-row"><b>${T("th.room")}:</b> ${esc(b.roomName)}</div>` +
     `<div class="cal-detail-row"><b>${T("label.date")}:</b> ${esc(b.date)}</div>` +
     `<div class="cal-detail-row"><b>${T("th.time")}:</b> ${esc(b.startTime)}–${esc(b.endTime)}</div>` +
-    `<div class="cal-detail-row"><b>${T("th.by")}:</b> ${esc(b.bookedBy)}</div>`;
+    `<div class="cal-detail-row"><b>${T("cal.owner")}:</b> ${esc(b.bookedBy)}</div>`;
   if (can) {
+    body += `<div class="btn-bar" style="margin-top:12px;"><button class="ghost" id="cmEditBtn" type="button">✎ ${T("btn.edit")}</button></div>`;
     body += `<div class="cal-modal-field"><label>${T("label.reason")}</label><input id="cmReason" type="text" placeholder="${T("ph.reason")}" /></div>`;
   }
 
@@ -186,12 +310,26 @@ function openDetails(id) {
     await DB.refresh();
     render();
   } : null);
+
+  // "Edit" button inside the details modal swaps over to the edit form.
+  const editBtn = byId("cmEditBtn");
+  if (editBtn) editBtn.onclick = () => openEdit(b);
 }
 
 // ---- toolbar ----
-byId("calPrev").addEventListener("click", () => { weekStart.setDate(weekStart.getDate() - 7); weekStart = new Date(weekStart); render(); });
-byId("calNext").addEventListener("click", () => { weekStart.setDate(weekStart.getDate() + 7); weekStart = new Date(weekStart); render(); });
-byId("calToday").addEventListener("click", () => { weekStart = startOfWeek(new Date()); render(); });
+function shift(dir) {
+  if (viewMode === "day") cursor.setDate(cursor.getDate() + dir);
+  else if (viewMode === "week") cursor.setDate(cursor.getDate() + dir * 7);
+  else cursor.setMonth(cursor.getMonth() + dir);
+  cursor = new Date(cursor);
+  render();
+}
+byId("calPrev").addEventListener("click", () => shift(-1));
+byId("calNext").addEventListener("click", () => shift(1));
+byId("calToday").addEventListener("click", () => { cursor = new Date(); render(); });
+byId("calWeek").addEventListener("click", () => setView("week"));
+byId("calDay").addEventListener("click", () => setView("day"));
+byId("calMonth").addEventListener("click", () => setView("month"));
 roomSel.addEventListener("change", () => { roomFilter = roomSel.value; render(); });
 window.addEventListener("languagechange", () => { buildRoomSelect(); render(); });
 

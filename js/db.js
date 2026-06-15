@@ -444,6 +444,71 @@ const DB = (() => {
     return { ok: true, booking };
   }
 
+  // Change time/title/room/date of an existing booking. Same rules as adding:
+  // must end after it starts, must finish by 17:30, and must not clash with
+  // any OTHER meeting in that room (its own row is ignored via ignoreId).
+  async function updateBooking(id, { roomId, title, date, startTime, endTime }) {
+    if (endTime <= startTime) {
+      return { ok: false, error: tr("err.endAfterStart", "End time must be after start time.") };
+    }
+    if (endTime > CLOSING_TIME) {
+      return { ok: false, error: tr("err.afterClose", "Meetings must end by 5:30 PM (17:30).") };
+    }
+
+    if (mode === "supabase") {
+      const { data: sameDayRaw, error: qErr } = await sb
+        .from("bookings")
+        .select("*")
+        .eq("date", date);
+      if (qErr) throw qErr;
+      const sameDay = (sameDayRaw || []).map(fromDbBooking);
+
+      const conflict = conflictIn(sameDay, { roomId, date, startTime, endTime, ignoreId: Number(id) });
+      if (conflict) {
+        return {
+          ok: false,
+          error: clashMsg(conflict),
+          suggestions: buildSuggestions(sameDay, state.rooms, { roomId, date, startTime, endTime }),
+        };
+      }
+
+      const room = state.rooms.find((r) => r.id === Number(roomId));
+      const { error } = await sb
+        .from("bookings")
+        .update({
+          room_id: Number(roomId),
+          room_name: room ? room.name : "",
+          title,
+          date,
+          start_time: startTime,
+          end_time: endTime,
+        })
+        .eq("id", Number(id));
+      if (error) throw error;
+      await refresh();
+      return { ok: true };
+    }
+
+    // jsonbin / local
+    const data = await docLoad();
+    const conflict = conflictIn(data.bookings, { roomId, date, startTime, endTime, ignoreId: Number(id) });
+    if (conflict) {
+      return {
+        ok: false,
+        error: clashMsg(conflict),
+        suggestions: buildSuggestions(data.bookings, data.rooms, { roomId, date, startTime, endTime }),
+      };
+    }
+    const room = data.rooms.find((r) => r.id === Number(roomId));
+    data.bookings = data.bookings.map((b) =>
+      Number(b.id) === Number(id)
+        ? { ...b, roomId: Number(roomId), roomName: room ? room.name : "", title, date, startTime, endTime }
+        : b
+    );
+    await docSave(data);
+    return { ok: true };
+  }
+
   function clashMsg(c) {
     const where = c.roomName ? `${c.roomName} is` : "That room is";
     return `${where} already booked for "${c.title}" (${c.startTime}–${c.endTime}).`;
@@ -498,6 +563,7 @@ const DB = (() => {
     updateRoom,
     deleteRoom,
     addBooking,
+    updateBooking,
     deleteBooking,
     cancelBooking,
   };

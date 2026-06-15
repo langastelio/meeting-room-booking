@@ -109,6 +109,34 @@
     </div>
   </main>
 
+  <!-- Edit-meeting modal -->
+  <div class="modal-overlay" id="editModal" hidden>
+    <div class="modal">
+      <h2 data-i18n="modal.editTitle">Edit meeting</h2>
+      <label for="editRoom" data-i18n="label.room">Meeting Room</label>
+      <select id="editRoom"></select>
+      <label for="editTitle" data-i18n="label.title">Meeting Title</label>
+      <input id="editTitle" type="text" data-i18n-ph="ph.title" placeholder="e.g. Sprint Planning" />
+      <label for="editDate" data-i18n="label.date">Date</label>
+      <input id="editDate" type="date" />
+      <div class="row">
+        <div>
+          <label for="editStart" data-i18n="label.start">Start</label>
+          <input id="editStart" type="time" min="08:00" max="17:00" />
+        </div>
+        <div>
+          <label for="editEnd" data-i18n="label.end">End</label>
+          <input id="editEnd" type="time" min="08:30" max="17:30" />
+        </div>
+      </div>
+      <div id="editModalErr" class="alert"></div>
+      <div class="btn-bar" style="justify-content:flex-end; margin-top:16px;">
+        <button class="ghost" id="editModalDismiss" type="button" data-i18n="btn.cancel">Cancel</button>
+        <button id="editModalSave" type="button" data-i18n="btn.saveChanges">Save changes</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Cancel-meeting modal -->
   <div class="modal-overlay" id="cancelModal" hidden>
     <div class="modal">

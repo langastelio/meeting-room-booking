@@ -359,7 +359,22 @@ td .btn-bar button { padding: 5px 10px; font-size: 0.8rem; }
 .cal-slot:hover { background:var(--surface-2); }
 .cal-ev { background:var(--primary); color:#fff; border-radius:6px; font-size:.72rem; line-height:1.2; padding:3px 6px; cursor:pointer; overflow:hidden; }
 .cal-ev + .cal-ev { margin-top:2px; }
+.cal-ev-title { display:block; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cal-ev-owner { display:block; font-size:.66rem; opacity:.9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cal-busy { background:rgba(37,99,235,.20); cursor:pointer; }
 .cal-modal-field { margin-top:10px; }
 .cal-detail-row { margin:4px 0; font-size:.92rem; }
 .cal-detail-row b { color:var(--muted); font-weight:600; }
+
+/* View switch + day / month layouts */
+.cal-viewbtns { display:flex; gap:4px; }
+.cal-viewbtns button.active { background:var(--primary); color:#fff; }
+.cal-grid.day { grid-template-columns: 64px 1fr; min-width:0; }
+.cal-grid.month { grid-template-columns: repeat(7, minmax(104px,1fr)); min-width:760px; }
+.cal-mcell { border-top:1px solid var(--border); border-left:1px solid var(--border); min-height:96px; padding:4px; cursor:pointer; display:flex; flex-direction:column; gap:2px; }
+.cal-mcell:hover { background:var(--surface-2); }
+.cal-mcell.cal-mout { opacity:.45; }
+.cal-mdate { align-self:flex-start; font-size:.78rem; font-weight:600; min-width:22px; text-align:center; border-radius:6px; padding:1px 4px; }
+.cal-mcell.today .cal-mdate { background:var(--primary); color:#fff; }
+.cal-mchip { background:var(--primary); color:#fff; border-radius:5px; font-size:.66rem; padding:1px 5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+.cal-more { font-size:.66rem; color:var(--muted); }

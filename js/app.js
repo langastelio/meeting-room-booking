@@ -80,6 +80,74 @@ function askCancelReason(label) {
   });
 }
 
+/* ---- edit-meeting modal ---- */
+const editModal = {
+  overlay: document.getElementById("editModal"),
+  room: document.getElementById("editRoom"),
+  title: document.getElementById("editTitle"),
+  date: document.getElementById("editDate"),
+  start: document.getElementById("editStart"),
+  end: document.getElementById("editEnd"),
+  err: document.getElementById("editModalErr"),
+  save: document.getElementById("editModalSave"),
+  dismiss: document.getElementById("editModalDismiss"),
+};
+let editingId = null;
+
+function openEdit(b) {
+  editingId = b.id;
+  const rooms = DB.getActiveRooms();
+  editModal.room.innerHTML = rooms
+    .map((r) => `<option value="${r.id}" ${Number(r.id) === Number(b.roomId) ? "selected" : ""}>${esc(r.name)}</option>`)
+    .join("");
+  editModal.title.value = b.title || "";
+  editModal.date.value = b.date || "";
+  editModal.start.value = b.startTime || "";
+  editModal.end.value = b.endTime || "";
+  editModal.err.className = "alert";
+  editModal.overlay.hidden = false;
+  setTimeout(() => editModal.title.focus(), 0);
+}
+function closeEdit() { editModal.overlay.hidden = true; editingId = null; }
+
+if (editModal.overlay) {
+  editModal.dismiss.addEventListener("click", closeEdit);
+  editModal.overlay.addEventListener("click", (e) => { if (e.target === editModal.overlay) closeEdit(); });
+  editModal.save.addEventListener("click", async () => {
+    if (editingId == null) return;
+    const title = editModal.title.value.trim();
+    if (!title) {
+      editModal.err.textContent = T("label.title");
+      editModal.err.className = "alert show err";
+      return;
+    }
+    editModal.save.disabled = true;
+    try {
+      const r = await DB.updateBooking(editingId, {
+        roomId: editModal.room.value,
+        title,
+        date: editModal.date.value,
+        startTime: editModal.start.value,
+        endTime: editModal.end.value,
+      });
+      if (!r.ok) {
+        editModal.err.textContent = r.error;
+        editModal.err.className = "alert show err";
+        return;
+      }
+      closeEdit();
+      await DB.refresh();
+      renderAll(true);
+      showAlert(T("msg.updated"), true);
+    } catch (err) {
+      editModal.err.textContent = err.message;
+      editModal.err.className = "alert show err";
+    } finally {
+      editModal.save.disabled = false;
+    }
+  });
+}
+
 // Who may cancel a booking: admins cancel any; users cancel only their own.
 function canCancel(b) {
   const me = typeof Auth !== "undefined" ? Auth.session() : null;
@@ -162,7 +230,8 @@ function renderBookings() {
         <td>${esc(b.startTime)}–${esc(b.endTime)}</td>
         <td>${
           canCancel(b)
-            ? `<button class="icon-btn" data-del="${b.id}" data-creator="${esc(b.createdBy || "")}"
+            ? `<button class="icon-btn" data-edit="${b.id}" title="${esc(T("btn.edit"))}">✎</button>
+               <button class="icon-btn" data-del="${b.id}" data-creator="${esc(b.createdBy || "")}"
                  data-title="${esc(b.title)}" data-room="${esc(b.roomName)}"
                  data-date="${esc(b.date)}" data-time="${esc(b.startTime)}–${esc(b.endTime)}"
                  title="Cancel booking">✕</button>`
@@ -171,6 +240,13 @@ function renderBookings() {
       </tr>`
     )
     .join("");
+
+  els.bookingList.querySelectorAll("[data-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const b = DB.getBookings().find((x) => String(x.id) === String(btn.dataset.edit));
+      if (b) openEdit(b);
+    });
+  });
 
   els.bookingList.querySelectorAll("[data-del]").forEach((btn) => {
     btn.addEventListener("click", async () => {
