@@ -230,11 +230,13 @@ function renderBookings() {
         <td>${esc(b.startTime)}–${esc(b.endTime)}</td>
         <td>${
           canCancel(b)
-            ? `<button class="icon-btn" data-edit="${b.id}" title="${esc(T("btn.edit"))}">✎</button>
-               <button class="icon-btn" data-del="${b.id}" data-creator="${esc(b.createdBy || "")}"
-                 data-title="${esc(b.title)}" data-room="${esc(b.roomName)}"
-                 data-date="${esc(b.date)}" data-time="${esc(b.startTime)}–${esc(b.endTime)}"
-                 title="Cancel booking">✕</button>`
+            ? `<div class="btn-bar">
+                 <button class="ghost" data-edit="${b.id}">✎ ${T("btn.edit")}</button>
+                 <button class="danger" data-del="${b.id}" data-creator="${esc(b.createdBy || "")}"
+                   data-title="${esc(b.title)}" data-room="${esc(b.roomName)}"
+                   data-date="${esc(b.date)}" data-time="${esc(b.startTime)}–${esc(b.endTime)}"
+                   title="${esc(T("btn.cancelMeeting"))}">✕ ${T("btn.cancel")}</button>
+               </div>`
             : ""
         }</td>
       </tr>`
