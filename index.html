@@ -69,6 +69,19 @@
             </div>
           </div>
 
+          <label for="repeat" data-i18n="label.repeat">Repeat</label>
+          <select id="repeat">
+            <option value="none" data-i18n="opt.repeatNone">Does not repeat</option>
+            <option value="daily" data-i18n="opt.repeatDaily">Daily (weekdays)</option>
+            <option value="weekly" data-i18n="opt.repeatWeekly">Weekly</option>
+            <option value="monthly" data-i18n="opt.repeatMonthly">Monthly</option>
+          </select>
+
+          <div id="repeatUntilRow" style="display:none;">
+            <label for="repeatUntil" data-i18n="label.repeatUntil">Repeat until</label>
+            <input id="repeatUntil" type="date" />
+          </div>
+
           <button type="submit" class="block" data-i18n="btn.reserve">Reserve Room</button>
           <div id="formAlert" class="alert"></div>
           <div id="suggestions" class="suggestions"></div>

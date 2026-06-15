@@ -8,6 +8,9 @@ const els = {
   date: document.getElementById("date"),
   startTime: document.getElementById("startTime"),
   endTime: document.getElementById("endTime"),
+  repeat: document.getElementById("repeat"),
+  repeatUntil: document.getElementById("repeatUntil"),
+  repeatUntilRow: document.getElementById("repeatUntilRow"),
   alert: document.getElementById("formAlert"),
   suggestions: document.getElementById("suggestions"),
   roomList: document.getElementById("roomList"),
@@ -243,35 +246,93 @@ function renderSuggestions(s) {
   );
 }
 
+// Local YYYY-MM-DD (avoids UTC off-by-one near midnight).
+function localISO(d) {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// Build the list of occurrence dates for a recurring booking (max 60).
+function buildDates(startISO, untilISO, freq) {
+  const out = [];
+  const s = new Date(startISO + "T00:00:00");
+  const u = new Date(untilISO + "T00:00:00");
+  if (isNaN(s) || isNaN(u) || u < s) return out;
+  const d = new Date(s);
+  let guard = 0;
+  while (d <= u && out.length < 60 && guard < 800) {
+    guard++;
+    if (freq === "daily") {
+      const dow = d.getDay();
+      if (dow !== 0 && dow !== 6) out.push(localISO(d)); // weekdays only
+      d.setDate(d.getDate() + 1);
+    } else if (freq === "weekly") {
+      out.push(localISO(d));
+      d.setDate(d.getDate() + 7);
+    } else if (freq === "monthly") {
+      out.push(localISO(d));
+      d.setMonth(d.getMonth() + 1);
+    } else break;
+  }
+  return out;
+}
+
+// Show the "Repeat until" field only when a recurrence is selected.
+function syncRepeatUI() {
+  if (!els.repeat || !els.repeatUntilRow) return;
+  els.repeatUntilRow.style.display = els.repeat.value === "none" ? "none" : "block";
+}
+if (els.repeat) els.repeat.addEventListener("change", syncRepeatUI);
+
 els.form.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!els.room.value) return showAlert(T("msg.addRoomFirst"), false);
 
   const me = typeof Auth !== "undefined" ? Auth.session() : null;
+  const base = {
+    roomId: els.room.value,
+    title: els.title.value.trim(),
+    bookedBy: els.bookedBy.value.trim(),
+    createdBy: me ? me.username : null,
+    startTime: els.startTime.value,
+    endTime: els.endTime.value,
+  };
+  const repeat = els.repeat ? els.repeat.value : "none";
+
   const btn = els.form.querySelector('button[type="submit"]');
   btn.disabled = true;
   btn.textContent = T("btn.reserving");
   clearSuggestions();
   try {
-    const result = await DB.addBooking({
-      roomId: els.room.value,
-      title: els.title.value.trim(),
-      bookedBy: els.bookedBy.value.trim(),
-      createdBy: me ? me.username : null,
-      date: els.date.value,
-      startTime: els.startTime.value,
-      endTime: els.endTime.value,
-    });
+    if (repeat === "none") {
+      // ---- single booking ----
+      const result = await DB.addBooking({ ...base, date: els.date.value });
+      if (!result.ok) {
+        showAlert(result.error, false);
+        if (result.suggestions) renderSuggestions(result.suggestions);
+        return;
+      }
+      showAlert(T("msg.booked"), true);
+      els.title.value = "";
+    } else {
+      // ---- recurring series ----
+      const until = els.repeatUntil.value;
+      if (!until) return showAlert(T("msg.untilRequired"), false);
+      const dates = buildDates(els.date.value, until, repeat);
+      if (!dates.length) return showAlert(T("msg.noDates"), false);
 
-    if (!result.ok) {
-      showAlert(result.error, false);
-      if (result.suggestions) renderSuggestions(result.suggestions);
-      return;
+      let booked = 0, skipped = 0;
+      for (const d of dates) {
+        const r = await DB.addBooking({ ...base, date: d });
+        if (r.ok) booked++; else skipped++;
+      }
+      showAlert(T("msg.seriesResult", { booked, skipped }), booked > 0);
+      if (booked > 0) {
+        els.title.value = "";
+        els.repeat.value = "none";
+        syncRepeatUI();
+      }
     }
-
-    showAlert(T("msg.booked"), true);
-    clearSuggestions();
-    els.title.value = "";
     renderRoomOptions();
     renderBookings();
   } catch (err) {
