@@ -99,7 +99,7 @@ const DB = (() => {
       .map((r) => ({ id: r.id, name: r.name, location: r.location }));
 
     const dur = toMin(endTime) - toMin(startTime);
-    const DAY_START = 8 * 60, DAY_END = 18 * 60, STEP = 30;
+    const DAY_START = 8 * 60, DAY_END = 17 * 60 + 30, STEP = 30; // close at 17:30
 
     // If the booking is for today, never suggest a slot that already started.
     const now = new Date();
@@ -370,9 +370,15 @@ const DB = (() => {
   }
 
   // ---- Bookings (per-room conflict check + alternative suggestions) --------
+  const CLOSING_TIME = "17:30"; // meetings must finish by 5:30 PM
+  const tr = (k, fallback) => (typeof I18N !== "undefined" ? I18N.t(k) : fallback);
+
   async function addBooking({ roomId, title, bookedBy, createdBy, date, startTime, endTime }) {
     if (endTime <= startTime) {
-      return { ok: false, error: "End time must be after start time." };
+      return { ok: false, error: tr("err.endAfterStart", "End time must be after start time.") };
+    }
+    if (endTime > CLOSING_TIME) {
+      return { ok: false, error: tr("err.afterClose", "Meetings must end by 5:30 PM (17:30).") };
     }
 
     if (mode === "supabase") {

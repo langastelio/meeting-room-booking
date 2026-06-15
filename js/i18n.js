@@ -55,6 +55,8 @@ const I18N = (() => {
       "sugg.none": "No free alternatives found that day (08:00–18:00).",
       "cancel.reasonRequired": "A reason is required to cancel.",
       "cancel.confirmTitle": "Cancel this meeting?",
+      "err.endAfterStart": "End time must be after start time.",
+      "err.afterClose": "Meetings must end by 5:30 PM (17:30).",
 
       // admin
       "title.admin": "Manage Rooms",
@@ -182,6 +184,8 @@ const I18N = (() => {
       "sugg.none": "Sem alternativas livres nesse dia (08:00–18:00).",
       "cancel.reasonRequired": "É necessário um motivo para cancelar.",
       "cancel.confirmTitle": "Cancelar esta reunião?",
+      "err.endAfterStart": "A hora de fim deve ser posterior à de início.",
+      "err.afterClose": "As reuniões devem terminar até às 17:30.",
 
       "title.admin": "Gerir Salas",
       "sub.admin": "Adicione, edite, ative ou remova salas de reunião.",
