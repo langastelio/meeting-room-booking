@@ -210,7 +210,40 @@ const Auth = (() => {
       .update({ password_hash: ph, must_reset: true })
       .eq("id", Number(id));
     if (error) return { ok: false, error: error.message };
+    // Clear any pending reset request (tolerant: the column may not exist yet).
+    try { await sb.from("app_users").update({ reset_requested: null }).eq("id", Number(id)); } catch (e) {}
     return { ok: true };
+  }
+
+  // ---- forgot password (self-service request, no email needed) -------------
+  // A signed-out user flags that they need a reset; an admin then issues a
+  // temporary password from the Users page. Always reports success so the form
+  // cannot be used to discover which usernames exist (no account enumeration).
+  async function requestPasswordReset(username) {
+    if (!sb) return { ok: false, error: "Database not configured." };
+    username = (username || "").trim().toLowerCase();
+    if (/^[a-z0-9._@-]{3,50}$/.test(username)) {
+      // Result ignored on purpose: an unknown user or a missing column must
+      // still look like success to the person asking.
+      try {
+        await sb.from("app_users").update({ reset_requested: new Date().toISOString() }).eq("username", username);
+      } catch (e) {}
+    }
+    return { ok: true };
+  }
+
+  // Admin helper: usernames that have asked for a reset (empty if unsupported).
+  async function pendingResets() {
+    try {
+      const { data, error } = await sb
+        .from("app_users")
+        .select("username, reset_requested")
+        .not("reset_requested", "is", null);
+      if (error) return [];
+      return data || [];
+    } catch (e) {
+      return [];
+    }
   }
 
   async function deleteUser(id) {
@@ -237,6 +270,8 @@ const Auth = (() => {
     changeOwnPassword,
     updateUser,
     resetUserPassword,
+    requestPasswordReset,
+    pendingResets,
     deleteUser,
     setActive,
   };

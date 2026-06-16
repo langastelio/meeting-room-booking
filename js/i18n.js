@@ -181,6 +181,12 @@ const I18N = (() => {
       "hint.password": "Use at least 8 characters, including a letter and a number.",
       "forgot.link": "Forgot password?",
       "forgot.msg": "Ask an administrator to reset your password — they can do it on the Users page. You'll set a new one on your next sign-in.",
+      "title.forgot": "Forgot your password?",
+      "sub.forgot": "Enter your username and an administrator will be notified to reset it. You'll choose a new password the next time you sign in.",
+      "btn.requestReset": "Request password reset",
+      "forgot.done": "Request sent. If that account exists, an administrator will set a temporary password for you — please contact them, then sign in and choose a new password.",
+      "forgot.back": "Back to sign in",
+      "tag.resetRequested": "reset requested",
 
       // dashboard
       "nav.dashboard": "Dashboard",
@@ -367,6 +373,12 @@ const I18N = (() => {
       "hint.password": "Use pelo menos 8 caracteres, incluindo uma letra e um número.",
       "forgot.link": "Esqueceu a palavra-passe?",
       "forgot.msg": "Peça a um administrador para repor a sua palavra-passe — pode fazê-lo na página Utilizadores. Definirá uma nova no próximo início de sessão.",
+      "title.forgot": "Esqueceu a palavra-passe?",
+      "sub.forgot": "Introduza o seu nome de utilizador e um administrador será notificado para a repor. Escolherá uma nova palavra-passe no próximo início de sessão.",
+      "btn.requestReset": "Pedir reposição de palavra-passe",
+      "forgot.done": "Pedido enviado. Se a conta existir, um administrador definirá uma palavra-passe temporária — contacte-o e depois inicie sessão para escolher uma nova.",
+      "forgot.back": "Voltar a entrar",
+      "tag.resetRequested": "reposição pedida",
 
       // dashboard
       "nav.dashboard": "Painel",

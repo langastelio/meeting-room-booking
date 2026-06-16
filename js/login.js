@@ -59,15 +59,6 @@ L.form.addEventListener("submit", async (e) => {
   }
 });
 
-// "Forgot password?" — there's no email reset; an admin resets it for you.
-const forgotLink = document.getElementById("forgotLink");
-if (forgotLink) {
-  forgotLink.addEventListener("click", (e) => {
-    e.preventDefault();
-    showAlert(T("forgot.msg"), false);
-  });
-}
-
 // Show / hide password
 const togglePass = document.getElementById("togglePass");
 if (togglePass) {

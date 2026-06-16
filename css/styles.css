@@ -142,6 +142,7 @@ button.block { width: 100%; margin-top: 16px; }
 .room .meta { color: var(--muted); font-size: 0.85rem; }
 .room .tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-size: 0.75rem; }
+.tag.req { background: var(--danger); border-color: var(--danger); color: #fff; }
 .room.selected { outline: 2px solid var(--primary); }
 
 /* Compact one-line-per-room list mode */

@@ -32,6 +32,7 @@ let search = "";          // current search text
 let sortKey = "name";     // column being sorted
 let sortDir = 1;          // 1 = ascending, -1 = descending
 let editingUser = null;   // user object open in the edit modal
+let pendingSet = new Set(); // usernames that have requested a password reset
 
 function showAlert(msg, ok) {
   U.alert.textContent = msg;
@@ -65,6 +66,7 @@ function rowHtml(u, me) {
   const roleBadge = `<span class="pill ${u.role === "admin" ? "on" : "off"}">${u.role}</span>`;
   const statusBadge = `<span class="pill ${u.active ? "on" : "off"}">${u.active ? T("status.active") : T("status.disabled")}</span>`;
   const pending = u.must_reset ? ` <span class="tag">${T("tag.tempPw")}</span>` : "";
+  const reqTag = pendingSet.has(u.username) ? ` <span class="tag req">${T("tag.resetRequested")}</span>` : "";
 
   const actions = [`<button class="ghost" data-edit="${u.id}">${T("btn.edit")}</button>`];
   if (!self) {
@@ -75,7 +77,7 @@ function rowHtml(u, me) {
 
   return `
     <tr data-row="${u.id}">
-      <td>${esc(u.name || "—")}${self ? ` <span class='tag'>${T("tag.you")}</span>` : ""}</td>
+      <td>${esc(u.name || "—")}${self ? ` <span class='tag'>${T("tag.you")}</span>` : ""}${reqTag}</td>
       <td>${esc(u.username)}</td>
       <td>${esc(u.email || "—")}</td>
       <td>${roleBadge}${pending}</td>
@@ -147,6 +149,12 @@ async function renderUsers() {
   } catch (err) {
     U.list.innerHTML = `<tr><td colspan="6" class="empty">Could not load users: ${esc(err.message)}</td></tr>`;
     return;
+  }
+  // Who has asked for a password reset (tolerant: empty if column not added).
+  try {
+    pendingSet = new Set((await Auth.pendingResets()).map((r) => r.username));
+  } catch (e) {
+    pendingSet = new Set();
   }
   paint();
 }
