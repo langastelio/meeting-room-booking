@@ -21,10 +21,19 @@ const els = {
   upPrev: document.getElementById("upPrev"),
   upNext: document.getElementById("upNext"),
   upPageInfo: document.getElementById("upPageInfo"),
+  roomSearch: document.getElementById("roomSearch"),
+  roomPageSize: document.getElementById("roomPageSize"),
+  roomViewToggle: document.getElementById("roomViewToggle"),
+  roomPrev: document.getElementById("roomPrev"),
+  roomNext: document.getElementById("roomNext"),
+  roomPageInfo: document.getElementById("roomPageInfo"),
 };
 
 // Pagination state for the Upcoming Bookings datatable.
 let upPage = 0;
+// Available Rooms: search, pagination and view-mode state.
+let roomPage = 0;
+let roomView = localStorage.getItem("mrb_room_view") === "list" ? "list" : "cards";
 
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -186,21 +195,53 @@ function renderRoomOptions() {
     : `<option value="">${T("empty.noRooms")}</option>`;
 }
 
+function updateRoomPager(page, pages, total) {
+  if (!els.roomPageInfo) return;
+  els.roomPageInfo.textContent = total ? T("dt.pageInfo", { page: page + 1, pages, total }) : "";
+  if (els.roomPrev) els.roomPrev.disabled = page <= 0;
+  if (els.roomNext) els.roomNext.disabled = page >= pages - 1;
+}
+
 function renderRooms() {
-  const rooms = DB.getActiveRooms();
-  if (!rooms.length) {
+  const all = DB.getActiveRooms();
+  els.roomList.className = roomView === "list" ? "rooms list" : "rooms";
+  if (els.roomViewToggle) els.roomViewToggle.textContent = roomView === "list" ? "▦" : "☰";
+
+  if (!all.length) {
     els.roomList.innerHTML = `<p class="empty">${T("empty.noRooms")}</p>`;
+    updateRoomPager(0, 0, 0);
     return;
   }
-  els.roomList.innerHTML = rooms
+
+  // Filter by free text across name, location and facilities.
+  const q = (els.roomSearch ? els.roomSearch.value : "").trim().toLowerCase();
+  const rooms = q
+    ? all.filter((r) => `${r.name} ${r.location} ${r.facilities}`.toLowerCase().includes(q))
+    : all;
+
+  if (!rooms.length) {
+    els.roomList.innerHTML = `<p class="empty">${T("empty.noRoomMatch")}</p>`;
+    updateRoomPager(0, 0, 0);
+    return;
+  }
+
+  // Paginate (6 per page by default, expandable to 12).
+  const pageSize = els.roomPageSize ? Number(els.roomPageSize.value) || 6 : 6;
+  const pages = Math.ceil(rooms.length / pageSize);
+  if (roomPage > pages - 1) roomPage = pages - 1;
+  if (roomPage < 0) roomPage = 0;
+  const pageRooms = rooms.slice(roomPage * pageSize, roomPage * pageSize + pageSize);
+  updateRoomPager(roomPage, pages, rooms.length);
+
+  els.roomList.innerHTML = pageRooms
     .map((r) => {
       const tags = r.facilities
-        ? r.facilities.split(",").map((f) => `<span class="tag">${f.trim()}</span>`).join("")
+        ? r.facilities.split(",").map((f) => `<span class="tag">${esc(f.trim())}</span>`).join("")
         : "";
       return `
         <div class="room" data-id="${r.id}">
-          <h3>${r.name}</h3>
-          <div class="meta">${r.location} · ${r.capacity} ${T("seats")}</div>
+          <h3>${esc(r.name)}</h3>
+          <div class="meta">${esc(r.location)} · ${r.capacity} ${T("seats")}</div>
           <div class="tags">${tags}</div>
         </div>`;
     })
@@ -495,6 +536,26 @@ if (els.upPageSize) {
 }
 if (els.upPrev) els.upPrev.addEventListener("click", () => { upPage--; renderBookings(); });
 if (els.upNext) els.upNext.addEventListener("click", () => { upPage++; renderBookings(); });
+
+// Available Rooms: search, page size (remembered), view toggle (remembered), paging.
+if (els.roomSearch) els.roomSearch.addEventListener("input", () => { roomPage = 0; renderRooms(); });
+if (els.roomPageSize) {
+  els.roomPageSize.value = localStorage.getItem("mrb_room_pagesize") === "12" ? "12" : "6";
+  els.roomPageSize.addEventListener("change", () => {
+    localStorage.setItem("mrb_room_pagesize", els.roomPageSize.value);
+    roomPage = 0;
+    renderRooms();
+  });
+}
+if (els.roomViewToggle) {
+  els.roomViewToggle.addEventListener("click", () => {
+    roomView = roomView === "list" ? "cards" : "list";
+    localStorage.setItem("mrb_room_view", roomView);
+    renderRooms();
+  });
+}
+if (els.roomPrev) els.roomPrev.addEventListener("click", () => { roomPage--; renderRooms(); });
+if (els.roomNext) els.roomNext.addEventListener("click", () => { roomPage++; renderRooms(); });
 
 // Re-render JS-generated text when the language changes.
 window.addEventListener("languagechange", () => { clearSuggestions(); renderAll(true); });

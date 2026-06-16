@@ -93,8 +93,23 @@
       <!-- Rooms + bookings -->
       <div class="grid">
         <section class="card">
-          <h2 data-i18n="card.availableRooms">Available Rooms</h2>
+          <div class="card-head">
+            <h2 data-i18n="card.availableRooms">Available Rooms</h2>
+            <button class="ghost icon-toggle" id="roomViewToggle" type="button" data-i18n-title="btn.toggleView" title="Toggle card / list view">☰</button>
+          </div>
+          <div class="dt-toolbar">
+            <input id="roomSearch" type="search" data-i18n-ph="ph.searchRooms" placeholder="Filter rooms (name, location, facility)…" autocomplete="off" />
+            <label class="toggle-inline" style="margin-left:auto;">
+              <span data-i18n="dt.perPage">Per page</span>
+              <select id="roomPageSize"><option value="6">6</option><option value="12">12</option></select>
+            </label>
+          </div>
           <div id="roomList" class="rooms"></div>
+          <div class="dt-pager">
+            <button class="ghost" id="roomPrev" type="button">‹ <span data-i18n="dt.prev">Prev</span></button>
+            <span class="dt-pageinfo" id="roomPageInfo"></span>
+            <button class="ghost" id="roomNext" type="button"><span data-i18n="dt.next">Next</span> ›</button>
+          </div>
         </section>
 
         <section class="card">

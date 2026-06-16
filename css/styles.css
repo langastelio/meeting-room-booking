@@ -144,6 +144,14 @@ button.block { width: 100%; margin-top: 16px; }
 .tag { background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-size: 0.75rem; }
 .room.selected { outline: 2px solid var(--primary); }
 
+/* Compact one-line-per-room list mode */
+.rooms.list { grid-template-columns: 1fr; gap: 6px; }
+.rooms.list .room { display: flex; align-items: center; gap: 12px; padding: 8px 14px; flex-wrap: wrap; }
+.rooms.list .room h3 { font-size: 0.95rem; margin: 0; }
+.rooms.list .room .meta { margin: 0; }
+.rooms.list .room .tags { margin: 0 0 0 auto; }
+.icon-toggle { padding: 4px 11px; font-size: 1rem; line-height: 1.2; }
+
 /* ---- Tables ---- */
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
