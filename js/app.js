@@ -16,7 +16,15 @@ const els = {
   roomList: document.getElementById("roomList"),
   bookingList: document.getElementById("bookingList"),
   mineOnly: document.getElementById("mineOnly"),
+  upRoomFilter: document.getElementById("upRoomFilter"),
+  upPageSize: document.getElementById("upPageSize"),
+  upPrev: document.getElementById("upPrev"),
+  upNext: document.getElementById("upNext"),
+  upPageInfo: document.getElementById("upPageInfo"),
 };
+
+// Pagination state for the Upcoming Bookings datatable.
+let upPage = 0;
 
 const esc = (s) =>
   String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -217,21 +225,51 @@ function highlightSelected() {
 // End time of a booking as a timestamp (used to drop meetings already held).
 const endTs = (b) => new Date(`${b.date}T${b.endTime}`).getTime();
 
+// (Re)build the room dropdown for the upcoming list, keeping the current choice.
+function renderUpRoomFilter() {
+  if (!els.upRoomFilter) return;
+  const cur = els.upRoomFilter.value;
+  const rooms = DB.getRooms();
+  els.upRoomFilter.innerHTML =
+    `<option value="">${T("cal.allRooms")}</option>` +
+    rooms.map((r) => `<option value="${r.id}">${esc(r.name)}</option>`).join("");
+  els.upRoomFilter.value = cur || "";
+}
+
+function updatePager(page, pages, total) {
+  if (!els.upPageInfo) return;
+  els.upPageInfo.textContent = total ? T("dt.pageInfo", { page: page + 1, pages, total }) : "";
+  if (els.upPrev) els.upPrev.disabled = page <= 0;
+  if (els.upNext) els.upNext.disabled = page >= pages - 1;
+}
+
 function renderBookings() {
   const now = Date.now();
   const me = typeof Auth !== "undefined" ? Auth.session() : null;
   const mineOnly = els.mineOnly && els.mineOnly.checked;
+  const roomId = els.upRoomFilter ? els.upRoomFilter.value : "";
   // "Upcoming" = not cancelled and not ended. Cancelled/held ones move to History.
   const bookings = DB.getBookings()
     .filter((b) => b.status !== "cancelled" && (isNaN(endTs(b)) || endTs(b) > now))
     .filter((b) => !mineOnly || isMine(b, me))
+    .filter((b) => !roomId || String(b.roomId) === roomId)
     .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
 
   if (!bookings.length) {
     els.bookingList.innerHTML = `<tr><td colspan="6" class="empty">${T(mineOnly ? "empty.noMine" : "empty.noUpcoming")}</td></tr>`;
+    updatePager(0, 0, 0);
     return;
   }
-  els.bookingList.innerHTML = bookings
+
+  // Pagination: 5 rows by default, expandable to 10.
+  const pageSize = els.upPageSize ? Number(els.upPageSize.value) || 5 : 5;
+  const pages = Math.ceil(bookings.length / pageSize);
+  if (upPage > pages - 1) upPage = pages - 1;
+  if (upPage < 0) upPage = 0;
+  const pageRows = bookings.slice(upPage * pageSize, upPage * pageSize + pageSize);
+  updatePager(upPage, pages, bookings.length);
+
+  els.bookingList.innerHTML = pageRows
     .map(
       (b) => `
       <tr>
@@ -440,9 +478,23 @@ if (els.mineOnly) {
   els.mineOnly.checked = localStorage.getItem("mrb_mine_only") === "1";
   els.mineOnly.addEventListener("change", () => {
     localStorage.setItem("mrb_mine_only", els.mineOnly.checked ? "1" : "0");
+    upPage = 0;
     renderBookings();
   });
 }
+
+// Upcoming datatable: room filter + page size (remembered) + prev/next paging.
+if (els.upRoomFilter) els.upRoomFilter.addEventListener("change", () => { upPage = 0; renderBookings(); });
+if (els.upPageSize) {
+  els.upPageSize.value = localStorage.getItem("mrb_up_pagesize") === "10" ? "10" : "5";
+  els.upPageSize.addEventListener("change", () => {
+    localStorage.setItem("mrb_up_pagesize", els.upPageSize.value);
+    upPage = 0;
+    renderBookings();
+  });
+}
+if (els.upPrev) els.upPrev.addEventListener("click", () => { upPage--; renderBookings(); });
+if (els.upNext) els.upNext.addEventListener("click", () => { upPage++; renderBookings(); });
 
 // Re-render JS-generated text when the language changes.
 window.addEventListener("languagechange", () => { clearSuggestions(); renderAll(true); });
@@ -454,6 +506,7 @@ function renderAll(preserveSelection) {
   renderRoomOptions();
   if (preserveSelection && selected) els.room.value = selected;
   renderRooms();
+  renderUpRoomFilter();
   renderBookings();
 }
 

@@ -102,12 +102,26 @@
             <h2 data-i18n="card.upcoming">Upcoming Bookings</h2>
             <label class="toggle-inline"><input type="checkbox" id="mineOnly" /> <span data-i18n="filter.mineOnly">My bookings only</span></label>
           </div>
-          <table>
-            <thead>
-              <tr><th data-i18n="th.room">Room</th><th data-i18n="th.meeting">Meeting</th><th data-i18n="th.by">By</th><th data-i18n="th.date">Date</th><th data-i18n="th.time">Time</th><th></th></tr>
-            </thead>
-            <tbody id="bookingList"></tbody>
-          </table>
+          <div class="dt-toolbar">
+            <select id="upRoomFilter"></select>
+            <label class="toggle-inline" style="margin-left:auto;">
+              <span data-i18n="dt.perPage">Per page</span>
+              <select id="upPageSize"><option value="5">5</option><option value="10">10</option></select>
+            </label>
+          </div>
+          <div class="dt-wrap">
+            <table>
+              <thead>
+                <tr><th data-i18n="th.room">Room</th><th data-i18n="th.meeting">Meeting</th><th data-i18n="th.by">By</th><th data-i18n="th.date">Date</th><th data-i18n="th.time">Time</th><th></th></tr>
+              </thead>
+              <tbody id="bookingList"></tbody>
+            </table>
+          </div>
+          <div class="dt-pager">
+            <button class="ghost" id="upPrev" type="button">‹ <span data-i18n="dt.prev">Prev</span></button>
+            <span class="dt-pageinfo" id="upPageInfo"></span>
+            <button class="ghost" id="upNext" type="button"><span data-i18n="dt.next">Next</span> ›</button>
+          </div>
         </section>
       </div>
     </div>

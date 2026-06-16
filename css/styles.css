@@ -162,6 +162,12 @@ th.sortable.sort-asc::after { content: "↑"; opacity: 1; }
 th.sortable.sort-desc::after { content: "↓"; opacity: 1; }
 .datatable td .btn-bar { gap: 6px; flex-wrap: nowrap; }
 .datatable td .btn-bar button { white-space: nowrap; }
+.dt-toolbar select { width: auto; min-width: 150px; margin: 0; }
+.dt-toolbar .toggle-inline select { min-width: 64px; }
+.dt-pager { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 12px; }
+.dt-pager button { padding: 6px 12px; }
+.dt-pager button:disabled { opacity: .45; cursor: default; }
+.dt-pageinfo { font-size: .85rem; color: var(--muted); min-width: 150px; text-align: center; }
 
 /* ---- Dashboard ---- */
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 22px; }
