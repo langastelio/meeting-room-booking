@@ -351,6 +351,96 @@ function exportICS() {
   URL.revokeObjectURL(url);
 }
 
+// ---- print a schedule (per room when filtered, grouped by room when "All rooms") ----
+// Date span follows the current view: the focused day, week (Mon–Sun) or whole month.
+function printRange() {
+  if (viewMode === "day") { const d = new Date(cursor); return { start: d, end: d }; }
+  if (viewMode === "month") {
+    const y = cursor.getFullYear(), m = cursor.getMonth();
+    return { start: new Date(y, m, 1), end: new Date(y, m + 1, 0) };
+  }
+  const ws = startOfWeek(cursor);
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  return { start: ws, end: we };
+}
+
+const fmtPrintDay = (iso) =>
+  new Date(iso + "T00:00:00").toLocaleDateString(locale(), { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+
+function scheduleTableHTML(list) {
+  const head = `<tr><th>${T("label.date")}</th><th>${T("th.time")}</th><th>${T("th.meeting")}</th><th>${T("cal.owner")}</th></tr>`;
+  const rows = list.map((b) =>
+    `<tr><td>${esc(fmtPrintDay(b.date))}</td><td>${esc(b.startTime)}–${esc(b.endTime)}</td><td>${esc(b.title)}</td><td>${esc(b.bookedBy || "—")}</td></tr>`
+  ).join("");
+  return `<table><thead>${head}</thead><tbody>${rows}</tbody></table>`;
+}
+
+function printSchedule() {
+  const rooms = DB.getActiveRooms();
+  const { start, end } = printRange();
+  const startISO = localISO(start), endISO = localISO(end);
+  const bookings = activeBookings()
+    .filter((b) => b.date >= startISO && b.date <= endISO)
+    .sort((a, b) => (a.date + a.startTime).localeCompare(b.date + b.startTime));
+
+  const roomName = roomFilter ? (rooms.find((r) => String(r.id) === roomFilter) || {}).name : null;
+  const scopeLabel = roomName || T("cal.allRooms");
+  const rangeLabel = startISO === endISO ? fmtPrintDay(startISO) : `${fmtPrintDay(startISO)} – ${fmtPrintDay(endISO)}`;
+
+  let body;
+  if (!bookings.length) {
+    body = `<div class="empty">${T("print.empty")}</div>`;
+  } else if (roomFilter) {
+    body = scheduleTableHTML(bookings);
+  } else {
+    // "All rooms" → one section per room (in the room list's order, extras last).
+    const order = rooms.map((r) => r.name);
+    const groups = {};
+    bookings.forEach((b) => { const k = b.roomName || "—"; (groups[k] = groups[k] || []).push(b); });
+    body = Object.keys(groups)
+      .sort((a, b) => {
+        const ia = order.indexOf(a), ib = order.indexOf(b);
+        return (ia === -1 ? 1e9 : ia) - (ib === -1 ? 1e9 : ib);
+      })
+      .map((n) => `<h2>${esc(n)} <span class="count">(${groups[n].length})</span></h2>${scheduleTableHTML(groups[n])}`)
+      .join("");
+  }
+
+  const generated = new Date().toLocaleString(locale());
+  const html = `<!DOCTYPE html><html lang="${esc(I18N.current())}"><head><meta charset="utf-8">
+<title>${esc(T("print.heading"))} — ${esc(scopeLabel)}</title>
+<style>
+  *{box-sizing:border-box}
+  body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px}
+  h1{font-size:16px;margin:0 0 2px}
+  .scope{font-size:14px;font-weight:bold;margin:6px 0 2px}
+  .meta{font-size:12px;color:#555;margin-bottom:16px}
+  h2{font-size:13px;margin:18px 0 6px;border-bottom:2px solid #333;padding-bottom:2px}
+  .count{font-weight:normal;color:#666}
+  table{width:100%;border-collapse:collapse;margin-bottom:12px}
+  th,td{border:1px solid #bbb;padding:6px 8px;font-size:12px;text-align:left;vertical-align:top}
+  th{background:#f0f0f0}
+  tr:nth-child(even) td{background:#fafafa}
+  .empty{font-size:13px;color:#666;padding:12px 0}
+  .toolbar{margin-bottom:16px}
+  .toolbar button{font-size:13px;padding:6px 14px;cursor:pointer}
+  @media print{body{margin:0}.toolbar{display:none}}
+</style></head><body>
+<div class="toolbar"><button onclick="window.print()">🖨️ ${esc(T("cal.print"))}</button></div>
+<h1>▦ ${esc(T("brand"))}</h1>
+<div class="scope">${esc(T("print.heading"))}: ${esc(scopeLabel)}</div>
+<div class="meta">${esc(rangeLabel)} · ${esc(T("print.generated"))}: ${esc(generated)}</div>
+${body}
+<script>window.onload=function(){window.print()}<\/script>
+</body></html>`;
+
+  const w = window.open("", "_blank");
+  if (!w) { alert(T("print.popupBlocked")); return; }
+  w.document.write(html);
+  w.document.close();
+  w.focus();
+}
+
 // ---- toolbar ----
 function shift(dir) {
   if (viewMode === "day") cursor.setDate(cursor.getDate() + dir);
@@ -366,6 +456,7 @@ byId("calWeek").addEventListener("click", () => setView("week"));
 byId("calDay").addEventListener("click", () => setView("day"));
 byId("calMonth").addEventListener("click", () => setView("month"));
 byId("calExport").addEventListener("click", exportICS);
+byId("calPrint").addEventListener("click", printSchedule);
 roomSel.addEventListener("change", () => { roomFilter = roomSel.value; render(); });
 window.addEventListener("languagechange", () => { buildRoomSelect(); render(); });
 

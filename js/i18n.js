@@ -206,6 +206,13 @@ const I18N = (() => {
       "dash.noData": "No bookings yet.",
       "dash.meetings": "meetings",
       "cal.exportIcs": "Export .ics",
+
+      // print schedule
+      "cal.print": "Print",
+      "print.heading": "Meeting Schedule",
+      "print.generated": "Generated",
+      "print.empty": "No meetings in this period.",
+      "print.popupBlocked": "Please allow pop-ups to print the schedule.",
     },
 
     pt: {
@@ -398,6 +405,13 @@ const I18N = (() => {
       "dash.noData": "Ainda não há reservas.",
       "dash.meetings": "reuniões",
       "cal.exportIcs": "Exportar .ics",
+
+      // print schedule
+      "cal.print": "Imprimir",
+      "print.heading": "Escala de Reuniões",
+      "print.generated": "Gerado em",
+      "print.empty": "Sem reuniões neste período.",
+      "print.popupBlocked": "Permita pop-ups para imprimir a escala.",
     },
   };
 
